@@ -59,3 +59,4 @@ The frontend should start at:
 http://localhost:5173/ 
 
  
+# STSWENG_PhotoAlbumManager
