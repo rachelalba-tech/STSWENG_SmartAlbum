@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Per-lab agent handoff plan (see .agents/AGENTS.md)
+.agents/PLAN.md
