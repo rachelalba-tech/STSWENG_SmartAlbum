@@ -56,7 +56,19 @@ npm run dev
 
 The frontend should start at:
 
-http://localhost:5173/ 
+http://localhost:5173/
 
- 
+## 4. Run the album API
+
+The album list needs the API. In a second terminal, from the project root:
+
+```bash
+cd server
+npm start
+```
+
+The API listens at http://localhost:3000. `npm run dev` proxies `/api` to it.
+
+Login is not built yet. The API uses a demo user and reads albums from `server/data/albums.json`.
+
 # STSWENG_PhotoAlbumManager

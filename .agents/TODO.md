@@ -45,8 +45,8 @@
 | **Acceptance Criteria:** All created photo albums are visible and openable. No missing albums |  |  |  |
 |  |  |  |  |
 | **Task \#** | **Task Description** | **Effort Estimate (hours/days)** | **Taken by** |
-| 1 | Backend functions of the feature | 3hrs |  |
-| 2 | Frontend view of all the albums | 3hrs |  |
+| 1 | Backend functions of the feature (done) | 3hrs | Joed |
+| 2 | Frontend view of all the albums (done) | 3hrs | Joed |
 
 ### **US \#4**
 
