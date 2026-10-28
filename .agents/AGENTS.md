@@ -25,10 +25,15 @@ the whole team belongs in `AGENTS.md` or `HISTORY.md` instead.
 ## Project
 
 A web app for events. Users upload photos into albums that an admin creates. The app helps curate them:
-it flags duplicate, similar and low-quality photos, recommends the best shots, sorts photos by EXIF
-time and place, lets users edit photos (crop, rotate, color grade), arrange album/collage layouts, and
-preview and export the album. There are two roles: **admin** (creates and labels albums) and **user**
-(uploads to them, edits and curates). See `PROPOSAL.md` for the full spec and `TODO.md` for the stories.
+it flags duplicate, similar and low-quality photos, recommends the best shots, organizes photos
+chronologically from capture time and place in their metadata, lets users edit photos (crop, rotate,
+color grade), arrange album/collage layouts, and preview and export the album. There are two roles:
+**admin** (creates and labels albums) and **user** (uploads to them, edits and curates). See
+`PROPOSAL.md` for the full spec and `TODO.md` for the stories.
+
+Follow `PROPOSAL.md` when it and `TODO.md` conflict: only an admin creates and labels albums (US #1 is
+written "as a user"). In `TODO.md`, US #15 is used twice (recommend best shots, then crop), with US #14
+between them. Do not renumber or reassign; that is a team decision.
 
 Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analysis module.
 
@@ -36,27 +41,36 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 
 <!-- Reconcile this section after every meaningful change. -->
 
-- **Front end:** `frontend/`. Vite + React 19 + TypeScript, ESLint. It is still the default Vite
-  scaffold, so no app features exist yet.
-- **Back end / photo analysis:** not started. The stack is not chosen yet. Record the choice here once
-  it is made.
-- **CI:** `.github/workflows/ci.yml` runs `npm ci` and `npm run build` in `frontend/` on PRs to `main`.
-  Lint, format, tests, path filtering, and the other automation listed in `PROPOSAL.md` are not set
-  up yet.
-- **Tests / formatter:** none configured yet.
+- **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Source is `src/app/`
+  and `src/styles/`. US #3 is in: a hash-routed list of the current user's albums (`#/`) and an album
+  page (`#/albums/:id`). No other app features yet.
+- **Back end:** `server/`. Node.js HTTP (no framework) on port 3000, TypeScript run directly by Node 22+.
+  `GET /api/albums` and `GET /api/albums/:id` read `server/data/albums.json`. The current user is the
+  fixed `demo-user` until US #25. Album creation is not built yet (US #1).
+- **Photo analysis:** not started.
+- **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
+  `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. It does not lint. Format, path
+  filtering, push triggers, and the other automation listed in `PROPOSAL.md` are not set up yet.
+- **Formatter:** none configured.
 
 ## Commands
 
 ```bash
 cd frontend
 npm install        # or `npm ci` for a clean, lockfile-exact install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173 — proxies /api to the server
+npm run preview    # serve the production build; the proxy is dev-only
+npm test           # vitest
 npm run lint
-npm run build      # tsc -b && vite build. This is what CI runs
+npm run build      # tsc -b && vite build
+
+cd server
+npm start          # http://localhost:3000
+npm test           # node --experimental-strip-types --test
 ```
 
-**Gate before a PR:** `npm run lint` and `npm run build` must pass in `frontend/`. When tests and a
-formatter are added, add them here too.
+**Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
+`server/`, `npm test` must pass. When a formatter is added, add it here too.
 
 ## Rules (summarized from `PROPOSAL.md`)
 
