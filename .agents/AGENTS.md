@@ -14,7 +14,8 @@ your own user-level config, not here.
 | `HISTORY.md`  | Log of meaningful changes, newest first                                                        | Agents and people |
 | `PLAN.md`     | *Optional, gitignored, one per lab.* Your own implementation and handoff notes (see below)    | You only |
 
-If this file and `PROPOSAL.md` disagree, `PROPOSAL.md` wins. Fix this file to match.
+If this file and `PROPOSAL.md` disagree, `PROPOSAL.md` wins, except for the explicitly authorized
+documentation-only workflow exception under *Rules*. Otherwise, fix this file to match.
 
 **`PLAN.md` (per-lab handoff):** you can keep your own `.agents/PLAN.md` holding the current task, the
 decisions made, what is done and what comes next, written so that a fresh session with no earlier
@@ -41,41 +42,76 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 
 <!-- Reconcile this section after every meaningful change. -->
 
-- **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Source is `src/app/`
-  and `src/styles/`. US #3 is in: a hash-routed list of the current user's albums (`#/`) and an album
-  page (`#/albums/:id`). No other app features yet.
-- **Back end:** `server/`. Node.js HTTP (no framework) on port 3000, TypeScript run directly by Node 22+.
-  `GET /api/albums` and `GET /api/albums/:id` read `server/data/albums.json`. The current user is the
-  fixed `demo-user` until US #25. Album creation is not built yet (US #1).
-- **Photo analysis:** not started.
+- **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Entry point is
+  `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. US #3 is implemented for the
+  demo user: a hash-routed album list (`#/`) and album page (`#/albums/:id`), with loading, empty and
+  error states. The album page currently shows only its title and a link back to the list.
+- **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
+  with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
+  and loads `server/data/albums.json` into memory. `GET /api/albums` lists the current user's albums;
+  `GET /api/albums/:id` returns an owned album or 404 for a missing or other user's album. Albums
+  contain only `id`, `title` and `ownerId`; there are no write endpoints.
+- **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
+  `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Album creation,
+  deletion, photo upload/viewing/editing, layouts, export and photo analysis are not implemented.
+- **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
+  discovers only `test/**/*.test.{ts,tsx}`. The four current tests cover static album rendering and
+  hash parsing; they do not exercise browser interactions or API fetching. The frontend build
+  type-checks `src/` and `vite.config.ts`, not `test/`. `server/test/albums.test.ts` has seven tests
+  covering ownership filtering, seed-file loading/validation and HTTP reads. The server test script
+  names this file explicitly; there is no separate server type-check or build script.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
-  `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. It does not lint. Format, path
-  filtering, push triggers, and the other automation listed in `PROPOSAL.md` are not set up yet.
-- **Formatter:** none configured.
+  `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
+  are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
+  end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
+  release automation are not configured in the repo. GitHub branch protection/review settings
+  cannot be established from these files.
+- **Formatter / end-to-end tests:** neither is configured.
 
 ## Commands
+
+Use the latest Node 22 release to match CI. Run the following in separate terminals, each starting
+at the project root; there is no root package script.
 
 ```bash
 cd frontend
 npm install        # or `npm ci` for a clean, lockfile-exact install
 npm run dev        # http://localhost:5173 — proxies /api to the server
-npm run preview    # serve the production build; the proxy is dev-only
-npm test           # vitest
-npm run lint
-npm run build      # tsc -b && vite build
-
-cd server
-npm start          # http://localhost:3000
-npm test           # node --experimental-strip-types --test
 ```
+
+```bash
+cd server
+npm start          # http://localhost:3000 — no npm install needed
+```
+
+Checks and local build preview (run in the named directory):
+
+```bash
+# frontend/
+npm test           # vitest run — frontend/test/
+npm run lint       # eslint .
+npm run build      # tsc -b && vite build
+npm run preview    # http://localhost:4173 — preview the built frontend
+
+# server/
+npm test           # node --experimental-strip-types --test test/albums.test.ts
+```
+
+Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
+both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
+does not include a proxy.
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
 `server/`, `npm test` must pass. When a formatter is added, add it here too.
 
-## Rules (summarized from `PROPOSAL.md`)
+## Rules (from `PROPOSAL.md`, with a documentation-only exception)
 
-- **Never commit or push to `main`.** Work on a descriptively named branch, open a PR into `main`, and
-  merge only after CI passes and a QA member or team lead approves.
+- **Code changes:** never commit or push directly to `main`. Work on a descriptively named branch,
+  open a PR into `main`, and merge only after CI passes and a QA member or team lead approves.
+- **Documentation-only exception:** context files (including `.agents/`) and other documentation
+  may be committed and pushed directly to `main`; no separate branch or PR is required. This is an
+  explicitly authorized exception to `PROPOSAL.md`'s branch/PR workflow. Changes that also affect
+  code, tooling or CI follow the normal branch/PR workflow.
 - **Commit and PR titles** use `<type>(<optional scope>): <description>`, where type is one of
   `feat | fix | style | test | docs | refactor | chore`. Example: `feat(album): add drag-and-drop photo reordering`.
 - **PRs stay small**, cover one task, and say what changed, why, and which user story (`US #n`) they address.

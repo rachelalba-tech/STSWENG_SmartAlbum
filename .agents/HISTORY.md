@@ -3,7 +3,9 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
-- 2026-10-28 · feat/view-albums · feat(album): list and open the signed-in user's albums (US #3).
+- 2026-10-29 · main · docs(agents): reconcile source/test paths, demo-user scope, commands and CI coverage; record the documentation-only direct-to-main workflow exception.
+- 2026-10-28 · chore/workflow · chore(test): move frontend tests from `src/app/` to `test/` and configure Vitest discovery (commit `a3418ba`, PR #9; US #3).
+- 2026-10-28 · feat/view-albums · feat(album): list and open the demo user's albums; login remains pending (US #3).
 - 2026-10-28 · feat/view-albums · docs(agents): reconcile current state with the reorganized frontend and the proposal.
 - 2026-10-26 · docs/agents-context · docs(agents): set up `.agents/` context. Added `AGENTS.md` and
   this file, root `AGENTS.md` and `CLAUDE.md` pointers to them, a gitignored per-lab `PLAN.md`
