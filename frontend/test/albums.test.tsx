@@ -1,10 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
-import type { Album } from "./api.ts"
-import { AlbumList } from "./AlbumList.tsx"
-import { AlbumPage } from "./AlbumPage.tsx"
-import { albumIdFromHash } from "./route.ts"
-
+import type { Album } from "../src/app/api.ts"
+import { AlbumList } from "../src/app/AlbumList.tsx"
+import { AlbumPage } from "../src/app/AlbumPage.tsx"
+import { albumIdFromHash } from "../src/app/route.ts"
 const albums: Album[] = [
   { id: "opening", title: "Opening ceremony", ownerId: "demo-user" },
   { id: "reception", title: "Reception", ownerId: "demo-user" },
