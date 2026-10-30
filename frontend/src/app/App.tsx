@@ -2,9 +2,11 @@ import { useEffect, useState } from "react"
 import "../styles/App.css"
 import { fetchAlbum, fetchAlbums } from "./api.ts"
 import type { Album } from "./api.ts"
-import { AlbumList } from "./AlbumList.tsx"
+// import { AlbumList } from "./AlbumList.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { albumIdFromHash } from "./route.ts"
+import { AlbumManager } from "./AlbumManager.tsx"
+import type { ManagedAlbum } from "./AlbumManager.tsx" 
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -15,16 +17,24 @@ function useHash() {
   }, [])
   return hash
 }
+// Your API albums only have id/title/ownerId, so fill in the rest
+const toManaged = (a: Album): ManagedAlbum => ({
+  id: a.id,
+  name: a.title,
+  description: "",
+  collaborationEnabled: false,
+  collaborators: [],
+})
 
 function AlbumListRoute() {
-  const [albums, setAlbums] = useState<Album[] | null>(null)
+  const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
     fetchAlbums().then(
       (next) => {
-        if (active) setAlbums(next)
+        if (active) setAlbums(next.map(toManaged))
       },
       () => {
         if (active) setError("Could not load albums. Start the server with npm start in server/.")
@@ -38,10 +48,15 @@ function AlbumListRoute() {
   if (error) return <p>{error}</p>
   if (!albums) return <p>Loading albums…</p>
   return (
-    <>
-      <h2>Your albums</h2>
-      <AlbumList albums={albums} />
-    </>
+    <AlbumManager
+      albums={albums}
+      photos={[]}
+      onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
+      onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
+      onAlbumSelect={(id) => {
+        window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
+      }}
+    />
   )
 }
 
