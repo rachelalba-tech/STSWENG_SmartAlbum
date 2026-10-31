@@ -138,6 +138,7 @@ As a user, I want to add headlines and descriptions to the albums so that it can
 
 As a user, I want to upload multiple photos at once so that I can quickly add pictures to an album.
 
+- **Status:** Done (PR #14, Natt)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt
@@ -148,13 +149,13 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
-| 1 | Backend functions of the feature | 4hrs | — |
+| 1 | Backend functions of the feature | 4hrs | Natt |
 
 ### US #10
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
-- **Status:** Done
+- **Status:** Done (PR #15, Alwayne)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
@@ -165,8 +166,8 @@ As a user, I want to view the uploaded photos both in a birds eye view and indiv
 
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
-| 1 | Backend functions of the feature | 5hrs | — |
-| 2 | Frontend view of the feature | 4hrs | — |
+| 1 | Backend functions of the feature | 5hrs | Natt |
+| 2 | Frontend view of the feature | 4hrs | Alwayne |
 
 ### US #11
 
