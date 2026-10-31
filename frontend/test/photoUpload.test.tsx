@@ -210,6 +210,7 @@ test("Clear uploaded removes finished photos only", async () => {
 
 test("hash maps to the right page, defaulting to albums", () => {
   expect(pageFromHash("#/upload")).toBe("upload")
+  expect(pageFromHash("#/photos")).toBe("photos")
   expect(pageFromHash("#/gallery")).toBe("albums")
   expect(pageFromHash("#/")).toBe("albums")
   expect(pageFromHash("")).toBe("albums")
@@ -220,7 +221,8 @@ test("tab bar links to every page and marks the current one", () => {
   render(<AppTabs active="upload" />)
   expect(screen.getByRole("link", { name: "Albums" }).getAttribute("href")).toBe("#/")
   expect(screen.getByRole("link", { name: "Upload" }).getAttribute("href")).toBe("#/upload")
+  expect(screen.getByRole("link", { name: "Photos" }).getAttribute("href")).toBe("#/photos")
   expect(screen.getByRole("link", { name: "Upload" }).getAttribute("aria-current")).toBe("page")
   expect(screen.getByRole("link", { name: "Albums" }).getAttribute("aria-current")).toBeNull()
-  expect(screen.queryByRole("link", { name: "Gallery" })).toBeNull()
+  expect(screen.getByRole("link", { name: "Photos" }).getAttribute("aria-current")).toBeNull()
 })

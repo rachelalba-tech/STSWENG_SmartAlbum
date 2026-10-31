@@ -8,10 +8,11 @@ export function albumIdFromHash(hash: string): string | null {
   }
 }
 
-export type Page = "albums" | "upload"
+export type Page = "albums" | "upload" | "photos"
 
 // "#/" (and anything unknown) is the Albums page, which stays the home page.
 export function pageFromHash(hash: string): Page {
   if (hash === "#/upload") return "upload"
+  if (hash === "#/photos") return "photos"
   return "albums"
 }
