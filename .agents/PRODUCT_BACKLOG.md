@@ -39,6 +39,7 @@ As a user, I want to delete photo albums that I no longer need so that I can onl
 
 As a user, I want to view all my photo albums in one place so that I can easily find, open, and edit them.
 
+- **Status:** Done (PR #7; demo user)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Joed
