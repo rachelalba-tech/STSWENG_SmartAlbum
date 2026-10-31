@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-01 · feat/remove-photo-from-album · feat(photos): remove a photo from an album without deleting it (Joed; US #7).
 - 2026-10-31 · feat/photo-view · feat(photos): add the all-photo grid and single-photo viewer (PR #15, Alwayne; US #10).
 - 2026-10-31 · feat/photo-upload · feat(photos): upload photos into an existing album (PR #14, Natt; US #9).
 - 2026-10-29 · main · docs(agents): reconcile source/test paths, demo-user scope, commands and CI coverage; record the documentation-only direct-to-main workflow exception.

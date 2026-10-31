@@ -47,9 +47,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   (`#/`), album page (`#/albums/:id`), upload (`#/upload`), and all-photos gallery (`#/photos`).
   The list is the album manager. Creating or editing an album there changes only the open page;
   the server does not save new albums. The album page shows the title, a link back, and that
-  album's photos. Upload sends several JPG, PNG, GIF, or WebP files (10 MB each) to an album the
-  API already has (US #9, Natt, PR #14). The gallery toggles a grid and a single photo, with arrow
-  keys in single view (US #10, Alwayne, PR #15).
+  album's photos, with a control to take a photo out of that album. Upload sends several JPG, PNG,
+  GIF, or WebP files (10 MB each) to an album the API already has (US #9, Natt, PR #14). The gallery
+  toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json` and `server/data/photos.json`, and creates
@@ -57,18 +57,20 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
   `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
   owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
-  serves that user's file. Albums contain only `id`, `title` and `ownerId`. There is no album
-  create, album delete, or remove-photo endpoint.
+  serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
+  and leaves the file in the library (US #7, Joed). Albums contain only `id`, `title` and `ownerId`.
+  There is no album create or album delete endpoint.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
-  `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Removing a photo
-  from an album, photo editing, layouts, export and photo analysis are not implemented.
+  `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Photo editing,
+  layouts, export and photo analysis are not implemented.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
   hash parsing, upload selection and retry, and the gallery grid and single view. They do not call
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
-  loading/validation and HTTP reads. Photo upload and serving have no server tests. The server
-  test script names `albums.test.ts` explicitly; there is no separate server type-check or build script.
+  loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
+  album without deleting the file. Photo upload and serving have no server tests. The server
+  test script names both files explicitly; there is no separate server type-check or build script.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
   `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
   are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
@@ -103,7 +105,7 @@ npm run build      # tsc -b && vite build
 npm run preview    # http://localhost:4173 — preview the built frontend
 
 # server/
-npm test           # node --experimental-strip-types --test test/albums.test.ts
+npm test           # node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts
 ```
 
 Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so

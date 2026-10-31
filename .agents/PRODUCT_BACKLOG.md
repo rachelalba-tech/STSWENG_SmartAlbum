@@ -104,6 +104,7 @@ As a user I want to add photos to an album so that I can organize my photos into
 
 As a user, I want to remove photos from an album so that I can revise its content without permanently deleting the photos from my library.
 
+- **Status:** Done (Joed)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Joed
@@ -114,7 +115,7 @@ As a user, I want to remove photos from an album so that I can revise its conten
 
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
-| 1 | Backend functions of the feature | 4hrs | — |
+| 1 | Backend functions of the feature | 4hrs | Joed |
 
 ### US #8
 

@@ -6,6 +6,7 @@ import { listAlbumsForUser, openAlbum, type Album } from "./albums.ts"
 import {
   IMAGE_TYPES,
   MAX_PHOTO_BYTES,
+  detachFromAlbum,
   listPhotosForUser,
   titleFromFileName,
   toPublic,
@@ -152,6 +153,39 @@ async function handleUpload(
   send(res, 201, toPublic(stored))
 }
 
+function handleDetach(
+  req: IncomingMessage,
+  res: ServerResponse,
+  albums: Album[],
+  ownerId: string,
+  albumId: string,
+  photoId: string,
+  storage: PhotoStorage | undefined,
+) {
+  req.resume()
+  if (!storage) {
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  if (!openAlbum(albums, ownerId, albumId)) {
+    send(res, 404, { error: "album not found" })
+    return
+  }
+  if (!detachFromAlbum(storage.photos, ownerId, albumId, photoId)) {
+    send(res, 404, { error: "photo not found" })
+    return
+  }
+  try {
+    storage.save(storage.photos)
+  } catch (err) {
+    const photo = storage.photos.find((p) => p.id === photoId && p.ownerId === ownerId)
+    if (photo) photo.albumId = albumId
+    throw err
+  }
+  res.writeHead(204)
+  res.end()
+}
+
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
   const photo = storage?.photos.find((p) => p.file === file && p.ownerId === ownerId)
   if (!storage || !photo) {
@@ -185,6 +219,22 @@ export function createAlbumServer({ albums, ownerId, photoStorage }: Options): S
         return
       }
       handleUpload(req, res, albums, ownerId, albumId, photoStorage).catch(fail)
+      return
+    }
+
+    const detach = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos\/([^/]+)$/)
+    if (detach && req.method === "DELETE") {
+      const albumId = safeDecode(detach[1])
+      const photoId = safeDecode(detach[2])
+      if (albumId === null || photoId === null) {
+        send(res, 400, { error: "bad id" })
+        return
+      }
+      try {
+        handleDetach(req, res, albums, ownerId, albumId, photoId, photoStorage)
+      } catch (err) {
+        fail(err)
+      }
       return
     }
 

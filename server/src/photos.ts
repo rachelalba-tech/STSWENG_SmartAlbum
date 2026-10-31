@@ -29,6 +29,14 @@ export function listPhotosForUser(photos: StoredPhoto[], ownerId: string, albumI
     .map(toPublic)
 }
 
+// Drop the album link only. An empty albumId means the photo stays in the library.
+export function detachFromAlbum(photos: StoredPhoto[], ownerId: string, albumId: string, photoId: string): boolean {
+  const photo = photos.find((p) => p.id === photoId && p.ownerId === ownerId && p.albumId === albumId)
+  if (!photo) return false
+  photo.albumId = ""
+  return true
+}
+
 export function toPublic({ ownerId: _ownerId, file: _file, ...photo }: StoredPhoto): Photo {
   return photo
 }

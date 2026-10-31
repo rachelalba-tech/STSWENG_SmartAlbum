@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { fetchAlbum, fetchAlbums, fetchPhotos } from "./api.ts"
+import { fetchAlbum, fetchAlbums, fetchPhotos, removePhotoFromAlbum } from "./api.ts"
 import type { Album, Photo } from "./api.ts"
 // import { AlbumList } from "./AlbumList.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
@@ -110,6 +110,16 @@ function AlbumRoute({ id }: { id: string }) {
     }
   }, [id])
 
+  async function removePhoto(photoId: string) {
+    try {
+      await removePhotoFromAlbum(id, photoId)
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId))
+      setPhotoError(null)
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Could not remove photo")
+    }
+  }
+
   if (error) {
     return (
       <>
@@ -123,7 +133,7 @@ function AlbumRoute({ id }: { id: string }) {
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      <AlbumPage album={album} photos={photos} />
+      <AlbumPage album={album} photos={photos} onRemove={removePhoto} />
       {photoError && <p>{photoError}</p>}
     </>
   )
