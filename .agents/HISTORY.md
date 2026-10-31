@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-10-31 · main · feat(photos): add the all-photo grid and expanded arrow-key photo viewer (US #10).
 - 2026-10-31 · main · chore(make): bootstrap the API and frontend together and configure verified frontend-only deployment.
 - 2026-10-29 · main · docs(agents): reconcile source/test paths, demo-user scope, commands and CI coverage; record the documentation-only direct-to-main workflow exception.
 - 2026-10-28 · chore/workflow · chore(test): move frontend tests from `src/app/` to `test/` and configure Vitest discovery (commit `a3418ba`, PR #9; US #3).

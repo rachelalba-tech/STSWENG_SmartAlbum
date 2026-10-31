@@ -7,6 +7,7 @@ import type { Album, Photo } from "./api.ts"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AppTabs } from "./AppTabs.tsx"
 import { PhotoUpload } from "./PhotoUpload.tsx"
+import { PhotoGallery } from "./PhotoGallery.tsx"
 import { albumIdFromHash, pageFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
@@ -175,6 +176,30 @@ function UploadRoute() {
   )
 }
 
+function PhotosRoute() {
+  const [photos, setPhotos] = useState<Photo[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    fetchPhotos().then(
+      (next) => {
+        if (active) setPhotos(next)
+      },
+      () => {
+        if (active) setError("Could not load photos. Start the server with npm start in server/.")
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (error) return <p>{error}</p>
+  if (!photos) return <p>Loading photos…</p>
+  return <PhotoGallery photos={photos} />
+}
+
 export default function App() {
   const hash = useHash()
   const albumId = albumIdFromHash(hash)
@@ -190,6 +215,8 @@ export default function App() {
         <AlbumRoute id={albumId} />
       ) : page === "upload" ? (
         <UploadRoute />
+      ) : page === "photos" ? (
+        <PhotosRoute />
       ) : (
         <AlbumListRoute />
       )}

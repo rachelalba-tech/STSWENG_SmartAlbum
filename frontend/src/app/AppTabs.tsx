@@ -1,12 +1,11 @@
-// Tabs for album view and upload photo view, could add more for gallery 
-
-import { FolderOpen, Upload } from "lucide-react"
+import { FolderOpen, Images, Upload } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { Page } from "./route.ts"
 
 const TABS: { page: Page; label: string; href: string; Icon: LucideIcon }[] = [
   { page: "albums", label: "Albums", href: "#/", Icon: FolderOpen },
   { page: "upload", label: "Upload", href: "#/upload", Icon: Upload },
+  { page: "photos", label: "Photos", href: "#/photos", Icon: Images },
 ]
 
 export function AppTabs({ active }: { active: Page }) {

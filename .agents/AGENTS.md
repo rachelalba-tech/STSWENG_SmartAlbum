@@ -43,24 +43,27 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 <!-- Reconcile this section after every meaningful change. -->
 
 - **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Entry point is
-  `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. US #3 is implemented for the
-  demo user: a hash-routed album list (`#/`) and album page (`#/albums/:id`), with loading, empty and
-  error states. The album page currently shows only its title and a link back to the list.
+  `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. The hash-routed app includes
+  albums (`#/` and `#/albums/:id`), multi-photo upload (`#/upload`) and an all-photo library
+  (`#/photos`). The photo library implements US #10 with a responsive five-column overview,
+  expanded single-photo view, adjacent controls and keyboard navigation.
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json` into memory. `GET /api/albums` lists the current user's albums;
-  `GET /api/albums/:id` returns an owned album or 404 for a missing or other user's album. Albums
-  contain only `id`, `title` and `ownerId`; there are no write endpoints. Under Figma Make, the
-  bootstrap scripts assign the API a separate internal port so Vite can bind the published port.
+  `GET /api/albums/:id` returns an owned album or 404, and the photo endpoints list, upload and serve
+  the current user's images. Albums contain only `id`, `title` and `ownerId`; there are no album write
+  endpoints. Under Figma Make, the bootstrap scripts assign the API a separate internal port so Vite
+  can bind the published port.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Album creation,
-  deletion, photo upload/viewing/editing, layouts, export and photo analysis are not implemented.
+  deletion, photo editing, layouts, export and photo analysis are not implemented.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
-  discovers only `test/**/*.test.{ts,tsx}`. The four current tests cover static album rendering and
-  hash parsing; they do not exercise browser interactions or API fetching. The frontend build
-  type-checks `src/` and `vite.config.ts`, not `test/`. `server/test/albums.test.ts` has seven tests
-  covering ownership filtering, seed-file loading/validation and HTTP reads. The server test script
-  names this file explicitly; there is no separate server type-check or build script.
+  discovers only `test/**/*.test.{ts,tsx}`. The 25 frontend tests cover albums, upload behavior,
+  routes/tabs, the photo grid, view switching and single-photo navigation; they do not exercise live
+  API fetching. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
+  `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
+  loading/validation and HTTP reads. The server test script names this file explicitly; there is no
+  separate server type-check or build script.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
   `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
   are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
