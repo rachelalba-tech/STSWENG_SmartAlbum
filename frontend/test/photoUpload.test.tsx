@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { afterEach, beforeAll, expect, test, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import type { Photo } from "../src/app/api.ts"
@@ -6,7 +5,6 @@ import { AppTabs } from "../src/app/AppTabs.tsx"
 import { PhotoUpload } from "../src/app/PhotoUpload.tsx"
 import { pageFromHash } from "../src/app/route.ts"
 
-// jsdom has no object URLs, which the previews rely on.
 beforeAll(() => {
   URL.createObjectURL = () => "blob:preview"
   URL.revokeObjectURL = () => {}
@@ -40,8 +38,6 @@ const choose = (files: File[]) =>
 
 const uploadButton = () => screen.getByRole("button", { name: /^Upload \d+ photos?$|^Uploading/ })
 
-// The page
-
 test("shows the upload page with a drop zone", () => {
   render(<PhotoUpload albums={albums} />)
   expect(screen.getByText("Upload Photos")).toBeTruthy()
@@ -64,8 +60,6 @@ test("Select Photos opens the file picker", () => {
   fireEvent.click(screen.getByRole("button", { name: "Select Photos" }))
   expect(click).toHaveBeenCalledTimes(1)
 })
-
-// Selecting
 
 test("selected photos are listed and ready to upload", () => {
   render(<PhotoUpload albums={albums} />)
@@ -122,8 +116,6 @@ test("a selected photo can be removed", () => {
   expect(screen.queryByText("one.png")).toBeNull()
   expect(screen.getByText("two.png")).toBeTruthy()
 })
-
-// Uploading
 
 test("uploading sends every photo to the chosen album and reports all of them", async () => {
   const upload = fakeUpload()
@@ -205,8 +197,6 @@ test("Clear uploaded removes finished photos only", async () => {
   expect(screen.queryByText("good.png")).toBeNull()
   expect(screen.getByText("bad.png")).toBeTruthy()
 })
-
-// Navigation
 
 test("hash maps to the right page, defaulting to albums", () => {
   expect(pageFromHash("#/upload")).toBe("upload")
