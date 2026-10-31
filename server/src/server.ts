@@ -17,6 +17,8 @@ const server = createAlbumServer({
   photoStorage: { photos, uploadsDir, save: (all) => savePhotos(photosFile, all) },
 })
 
-server.listen(3000, () => {
-  console.log("Album API on http://localhost:3000")
+const port = process.env.FIGMA ? Number(process.env.API_PORT ?? 3000) : 3000
+
+server.listen(port, () => {
+  console.log(`Album API on http://localhost:${port}`)
 })

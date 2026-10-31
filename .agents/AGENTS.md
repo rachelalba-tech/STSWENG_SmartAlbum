@@ -50,7 +50,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json` into memory. `GET /api/albums` lists the current user's albums;
   `GET /api/albums/:id` returns an owned album or 404 for a missing or other user's album. Albums
-  contain only `id`, `title` and `ownerId`; there are no write endpoints.
+  contain only `id`, `title` and `ownerId`; there are no write endpoints. Under Figma Make, the
+  bootstrap scripts assign the API a separate internal port so Vite can bind the published port.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Album creation,
   deletion, photo upload/viewing/editing, layouts, export and photo analysis are not implemented.
@@ -66,6 +67,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
   release automation are not configured in the repo. GitHub branch protection/review settings
   cannot be established from these files.
+- **Figma Make:** `.mise.toml` pins Node 22. `.figma/make/install` installs the frontend lockfile,
+  and `.figma/make/dev` supervises the API and Vite together. Static frontend deploy verification
+  is configured, but deploy previews are skipped because the album experience requires the
+  separately hosted Node API.
 - **Formatter / end-to-end tests:** neither is configured.
 
 ## Commands
@@ -100,6 +105,14 @@ npm test           # node --experimental-strip-types --test test/albums.test.ts
 Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
 both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
 does not include a proxy.
+
+Figma Make lifecycle checks run from the project root:
+
+```bash
+figma make verify-bootstrap
+figma make verify-deploy
+figma make verify-deploy-preview --skip
+```
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
 `server/`, `npm test` must pass. When a formatter is added, add it here too.
