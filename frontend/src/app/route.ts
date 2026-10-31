@@ -7,3 +7,11 @@ export function albumIdFromHash(hash: string): string | null {
     return null
   }
 }
+
+export type Page = "albums" | "upload"
+
+// "#/" (and anything unknown) is the Albums page, which stays the home page.
+export function pageFromHash(hash: string): Page {
+  if (hash === "#/upload") return "upload"
+  return "albums"
+}

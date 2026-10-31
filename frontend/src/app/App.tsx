@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
-import { fetchAlbum, fetchAlbums } from "./api.ts"
-import type { Album } from "./api.ts"
+import "../styles/AppShell.css"
+import { fetchAlbum, fetchAlbums, fetchPhotos } from "./api.ts"
+import type { Album, Photo } from "./api.ts"
 // import { AlbumList } from "./AlbumList.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
-import { albumIdFromHash } from "./route.ts"
+import { AppTabs } from "./AppTabs.tsx"
+import { PhotoUpload } from "./PhotoUpload.tsx"
+import { albumIdFromHash, pageFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
-import type { ManagedAlbum } from "./AlbumManager.tsx" 
+import type { ManagedAlbum } from "./AlbumManager.tsx"
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -28,10 +31,18 @@ const toManaged = (a: Album): ManagedAlbum => ({
 
 function AlbumListRoute() {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
+  const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
+    // Photo counts and covers are a nice-to-have, so a failure here must not hide the albums.
+    fetchPhotos().then(
+      (next) => {
+        if (active) setPhotos(next)
+      },
+      () => {},
+    )
     fetchAlbums().then(
       (next) => {
         if (active) setAlbums(next.map(toManaged))
@@ -50,7 +61,7 @@ function AlbumListRoute() {
   return (
     <AlbumManager
       albums={albums}
-      photos={[]}
+      photos={photos}
       onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
       onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
       onAlbumSelect={(id) => {
@@ -62,6 +73,8 @@ function AlbumListRoute() {
 
 function AlbumRoute({ id }: { id: string }) {
   const [album, setAlbum] = useState<Album | null>(null)
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -72,6 +85,23 @@ function AlbumRoute({ id }: { id: string }) {
       },
       (err: unknown) => {
         if (active) setError(err instanceof Error ? err.message : "Could not open album")
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [id])
+
+  useEffect(() => {
+    let active = true
+    setPhotos([])
+    setPhotoError(null)
+    fetchPhotos(id).then(
+      (next) => {
+        if (active) setPhotos(next)
+      },
+      () => {
+        if (active) setPhotoError("Could not load photos.")
       },
     )
     return () => {
@@ -90,15 +120,79 @@ function AlbumRoute({ id }: { id: string }) {
     )
   }
   if (!album) return <p>Loading album…</p>
-  return <AlbumPage album={album} />
+  return (
+    <>
+      <AlbumPage album={album} photos={photos} />
+      {photoError && <p>{photoError}</p>}
+    </>
+  )
+}
+
+function UploadRoute() {
+  const [albums, setAlbums] = useState<Album[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [lastAlbumId, setLastAlbumId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    fetchAlbums().then(
+      (next) => {
+        if (active) setAlbums(next)
+      },
+      () => {
+        if (active) setError("Could not load albums. Start the server with npm start in server/.")
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (error) return <p>{error}</p>
+  if (!albums) return <p>Loading albums…</p>
+  if (albums.length === 0) {
+    return (
+      <div className="page">
+        <h2>Upload Photos</h2>
+        <p>
+          Photos are stored in albums. <a href="#/">Create an album</a> first.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="page">
+      <PhotoUpload
+        albums={albums.map((a) => ({ id: a.id, name: a.title }))}
+        onUploaded={(added) => setLastAlbumId(added[0].albumId)}
+      />
+      {lastAlbumId && (
+        <p>
+          <a href={`#/albums/${encodeURIComponent(lastAlbumId)}`}>View the album</a>
+        </p>
+      )}
+    </div>
+  )
 }
 
 export default function App() {
-  const albumId = albumIdFromHash(useHash())
+  const hash = useHash()
+  const albumId = albumIdFromHash(hash)
+  const page = albumId ? "albums" : pageFromHash(hash)
+
   return (
     <section id="center">
-      <h1>Smart Photo Album</h1>
-      {albumId ? <AlbumRoute id={albumId} /> : <AlbumListRoute />}
+      <header className="app-header">
+        <h1>Smart Photo Album</h1>
+      </header>
+      <AppTabs active={page} />
+      {albumId ? (
+        <AlbumRoute id={albumId} />
+      ) : page === "upload" ? (
+        <UploadRoute />
+      ) : (
+        <AlbumListRoute />
+      )}
     </section>
   )
 }
