@@ -121,7 +121,7 @@
   gap: 18px;
   padding: 24px;
   border-radius: 14px;
-  background: #17141c;
+  background: #ccc8c8;
 }
 
 .pg-figure {
@@ -149,7 +149,7 @@
   gap: 24px;
   width: min(100%, 720px);
   margin-top: 16px;
-  color: #fff;
+  color: #070707;
   font-size: 13px;
 }
 
