@@ -10,7 +10,7 @@ your own user-level config, not here.
 | ------------- | --------------------------------------------------------------------------------------------- | ------------ |
 | `AGENTS.md`   | This file: current state, commands, rules                                                      | Agents and people |
 | `PROPOSAL.md` | Project specs, methodology, Git workflow, CI, commit and PR rules. **The source of truth.**   | **READ-ONLY.** Never edit it. |
-| `PRODUCT_BACKLOG.md` | Product backlog (user stories US #1–#25, priorities, assignees, tasks). There is no `TODO.md`. | People; agents update status only (see below) |
+| `PRODUCT_BACKLOG.md` | Product backlog (user stories US #1–#26, priorities, assignees, tasks). There is no `TODO.md`. | People; agents update status only (see below) |
 | `HISTORY.md`  | Log of meaningful changes, newest first                                                        | Agents and people |
 | `PLAN.md`     | *Optional, gitignored, one per lab.* Your own implementation and handoff notes (see below)    | You only |
 
@@ -33,8 +33,7 @@ color grade), arrange album/collage layouts, and preview and export the album. T
 `PROPOSAL.md` for the full spec and `PRODUCT_BACKLOG.md` for the stories.
 
 Follow `PROPOSAL.md` when it and `PRODUCT_BACKLOG.md` conflict: only an admin creates and labels albums (US #1 is
-written "as a user"). In `PRODUCT_BACKLOG.md`, US #15 is used twice (recommend best shots, then crop), with US #14
-between them. Do not renumber or reassign; that is a team decision.
+written "as a user"). Do not renumber stories or reassign people; that is a team decision.
 
 Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analysis module.
 
@@ -61,7 +60,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   and leaves the file in the library (US #7, Joed). Albums contain only `id`, `title` and `ownerId`.
   There is no album create or album delete endpoint.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
-  `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Photo editing,
+  `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
   layouts, export and photo analysis are not implemented.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
@@ -75,8 +74,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
   are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
   end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
-  release automation are not configured in the repo. GitHub branch protection/review settings
-  cannot be established from these files.
+  release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
+  and force pushes for everyone and requires a PR with one approval from someone other than the
+  last pusher; a new push dismisses earlier approvals. Lint is not clean on `main` (four
+  `react-hooks`/`react-refresh` errors in `AlbumManager.tsx`, `App.tsx`, `PhotoUpload.tsx`).
 - **Formatter / end-to-end tests:** neither is configured.
 
 ## Commands
@@ -122,7 +123,8 @@ does not include a proxy.
 - **Documentation-only exception:** context files (including `.agents/`) and other documentation
   may be committed and pushed directly to `main`; no separate branch or PR is required. This is an
   explicitly authorized exception to `PROPOSAL.md`'s branch/PR workflow. Changes that also affect
-  code, tooling or CI follow the normal branch/PR workflow.
+  code, tooling or CI follow the normal branch/PR workflow. The `main` ruleset currently rejects
+  every direct push, so documentation also goes through a PR until the ruleset allows it.
 - **Commit and PR titles** use `<type>(<optional scope>): <description>`, where type is one of
   `feat | fix | style | test | docs | refactor | chore`. Example: `feat(album): add drag-and-drop photo reordering`.
 - **PRs stay small**, cover one task, and say what changed, why, and which user story (`US #n`) they address.
