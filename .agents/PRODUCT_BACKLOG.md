@@ -154,6 +154,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
+- **Status:** Done
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
