@@ -67,6 +67,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   release automation are not configured in the repo. GitHub branch protection/review settings
   cannot be established from these files.
 - **Formatter / end-to-end tests:** neither is configured.
+- **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
+  `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
+  read-only page with no controls inside it. There are no collage layouts or export yet; export
+  (US #23) should render this same component. `frontend/test/albumPreview.test.tsx` covers it.
 
 ## Commands
 

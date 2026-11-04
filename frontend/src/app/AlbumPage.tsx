@@ -7,6 +7,9 @@ export function AlbumPage({ album, photos = [] }: { album: Album; photos?: Photo
       <a className="back" href="#/">
         All albums
       </a>
+      <a href={"#/albums/" + encodeURIComponent(album.id) + "/preview"} style={{ display: "block", marginBottom: 16 }}>
+        Preview album
+      </a>
       <h2>{album.title}</h2>
       {photos.length === 0 ? (
         <p>No photos yet.</p>
