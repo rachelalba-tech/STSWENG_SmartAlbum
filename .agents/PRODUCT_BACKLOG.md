@@ -169,7 +169,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
-| 1 | Backend functions of the feature | 4hrs | Natt |
+| 1 | Backend functions of the feature | 4hrs | — |
 
 ### US #10
 
@@ -186,8 +186,8 @@ As a user, I want to view the uploaded photos both in a birds eye view and indiv
 
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
-| 1 | Backend functions of the feature | 5hrs | Natt |
-| 2 | Frontend view of the feature | 4hrs | Alwayne |
+| 1 | Backend functions of the feature | 5hrs | — |
+| 2 | Frontend view of the feature | 4hrs | — |
 
 ### US #11
 
