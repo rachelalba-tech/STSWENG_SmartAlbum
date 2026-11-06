@@ -39,6 +39,7 @@ As a user, I want to delete photo albums that I no longer need so that I can onl
 
 As a user, I want to view all my photo albums in one place so that I can easily find, open, and edit them.
 
+- **Status:** Done (PR #7; demo user)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Joed
@@ -157,6 +158,7 @@ AC2: It is easy to understand where to write the album headlines and description
 
 As a user, I want to upload multiple photos at once so that I can quickly add pictures to an album.
 
+- **Status:** Done (PR #14, Natt)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt
@@ -173,7 +175,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
-- **Status:** Done
+- **Status:** Done (PR #15, Alwayne)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
