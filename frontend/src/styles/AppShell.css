@@ -28,7 +28,7 @@ html { scrollbar-gutter: stable; }
   border-radius: 20px;
   color: var(--text-h);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   text-decoration: none;
   transition: background-color 0.15s;
 }

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react"
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react"
 import { createPortal } from "react-dom"
 import {
-  Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon,
+  Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon, LayoutGrid,
 } from "lucide-react"
 import "../styles/AlbumManager.css"
+import { AlbumCollage } from "./AlbumCollage"
 
 // Interfaces 
 export interface Photo {
@@ -377,6 +378,22 @@ function CollaboratorsDialog({ album, onUpdate }: { album: ManagedAlbum; onUpdat
   )
 }
 
+function CollageDialog({ album, photos }: { album: ManagedAlbum; photos: Photo[] }) {
+  const [open, setOpen] = useState(false)
+  const albumPhotos = photos.filter((p) => p.albumId === album.id)
+
+  return (
+    <>
+      <IconButton label="Create collage" onClick={() => setOpen(true)}>
+        <LayoutGrid size={14} />
+      </IconButton>
+      <Modal open={open} onClose={() => setOpen(false)} title={<><LayoutGrid size={16} /> Collage: {album.name}</>}>
+        <AlbumCollage photos={albumPhotos} onClose={() => setOpen(false)} />
+      </Modal>
+    </>
+  )
+}
+
 // Main album components 
 
 export function AlbumManager({ albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate }: AlbumManagerProps) {
@@ -514,6 +531,7 @@ export function AlbumManager({ albums, photos, onAlbumCreate, onAlbumSelect, onA
                   <div className="am-card-title">
                     <span>{album.name}</span>
                     <div className="am-actions">
+                      <CollageDialog album={album} photos={photos} />
                       <CollaboratorsDialog album={album} onUpdate={onAlbumUpdate} />
                       <AlbumCoverDialog album={album} photos={photos} onUpdate={onAlbumUpdate} />
                       <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />
@@ -544,7 +562,8 @@ export function AlbumManager({ albums, photos, onAlbumCreate, onAlbumSelect, onA
       )}
 
       <div className="am-stats">
-        <h3>Collection overview</h3>
+        <h2>Collection Overview</h2>
+        <br></br>
         <div className="am-stats-grid">
           <div className="am-stat"><strong>{albums.length}</strong><span>Albums</span></div>
           <div className="am-stat"><strong>{photos.length}</strong><span>Total photos</span></div>

@@ -22,7 +22,7 @@ function useHash() {
   }, [])
   return hash
 }
-// Your API albums only have id/title/ownerId, so fill in the rest
+
 const toManaged = (a: Album): ManagedAlbum => ({
   id: a.id,
   name: a.title,
