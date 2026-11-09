@@ -5,6 +5,7 @@ import { createAlbumServer } from "./http.ts"
 import { loadPhotos, savePhotos } from "./photo-store.ts"
 import { loadAlbums } from "./store.ts"
 
+
 const dataFile = fileURLToPath(new URL("../data/albums.json", import.meta.url))
 const photosFile = fileURLToPath(new URL("../data/photos.json", import.meta.url))
 const uploadsDir = fileURLToPath(new URL("../data/uploads", import.meta.url))
