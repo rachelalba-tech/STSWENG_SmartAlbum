@@ -3,6 +3,9 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-05 · feat/album-preview · feat(album): read-only album preview before export; mark done stories (US #3, #9, #10, #22) in the backlog (Joed; US #22).
+- 2026-10-31 · main · feat(photos): add the all-photo grid and expanded arrow-key photo viewer (US #10).
+- 2026-10-31 · main · chore(make): bootstrap the API and frontend together and configure verified frontend-only deployment.
 - 2026-11-05 · ElisaP16-product_backlog · docs(backlog): sync the sprint 2 backlog with the team's GDocs and renumber US #14–#26 so US #15 is no longer used twice (PR #18, Elisa).
 - 2026-10-31 · feat/photo-view · feat(photos): add the all-photo grid and single-photo viewer (PR #15, Alwayne; US #10).
 - 2026-10-31 · feat/photo-upload · feat(photos): upload photos into an existing album (PR #14, Natt; US #9).
