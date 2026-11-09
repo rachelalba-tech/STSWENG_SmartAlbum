@@ -4,6 +4,14 @@ import { readFile, unlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { listAlbumsForUser, openAlbum, type Album } from "./albums.ts"
 import {
+  MAX_COLLAGE_BODY_BYTES,
+  listCollagesForUser,
+  parseCollageInput,
+  photosBelongToAlbum,
+  toPublicCollage,
+  type StoredCollage,
+} from "./collages.ts"
+import {
   IMAGE_TYPES,
   MAX_PHOTO_BYTES,
   listPhotosForUser,
@@ -13,19 +21,21 @@ import {
 } from "./photos.ts"
 
 export type PhotoStorage = {
-  /** Live list of stored photos; new uploads are pushed onto it. */
   photos: StoredPhoto[]
-  /** Folder that holds the image files. */
   uploadsDir: string
-  /** Persists the list. Must be synchronous so concurrent uploads can't interleave writes. */
   save: (photos: StoredPhoto[]) => void
+}
+
+export type CollageStorage = {
+  collages: StoredCollage[]
+  save: (collages: StoredCollage[]) => void
 }
 
 type Options = {
   albums: Album[]
   ownerId: string
-  /** Leave out to run without photo support (uploads then answer 501). */
   photoStorage?: PhotoStorage
+  collageStorage?: CollageStorage
 }
 
 const encoder = new TextEncoder()
@@ -47,7 +57,6 @@ function safeDecode(value: string): string | null {
   }
 }
 
-// Resolves with the body, or null if it grew past the limit.
 function readBody(req: IncomingMessage, limit: number): Promise<Uint8Array | null> {
   return new Promise((resolve, reject) => {
     const chunks: Uint8Array[] = []
@@ -59,7 +68,7 @@ function readBody(req: IncomingMessage, limit: number): Promise<Uint8Array | nul
       if (size > limit) {
         done = true
         resolve(null)
-        return // keep draining so the client can read our 413
+        return 
       }
       chunks.push(chunk)
     })
@@ -138,8 +147,6 @@ async function handleUpload(
     file,
   }
 
-  // Bytes first, then the record. If recording fails, remove the file and report an error,
-  // so the client keeps the photo for a retry instead of believing it was saved.
   await writeFile(join(storage.uploadsDir, file), body)
   try {
     storage.photos.push(stored)
@@ -150,6 +157,145 @@ async function handleUpload(
     throw err
   }
   send(res, 201, toPublic(stored))
+}
+
+async function readJson(req: IncomingMessage, res: ServerResponse): Promise<unknown | undefined> {
+  const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase()
+  if (contentType !== "application/json") {
+    req.resume()
+    send(res, 415, { error: "expected application/json" })
+    return undefined
+  }
+  const body = await readBody(req, MAX_COLLAGE_BODY_BYTES)
+  if (body === null) {
+    send(res, 413, { error: "request too large" })
+    return undefined
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(body))
+  } catch {
+    send(res, 400, { error: "invalid JSON" })
+    return undefined
+  }
+}
+
+async function handleCollages(
+  req: IncomingMessage,
+  res: ServerResponse,
+  albums: Album[],
+  ownerId: string,
+  id: string | undefined,
+  storage: CollageStorage | undefined,
+  photos: StoredPhoto[],
+) {
+  if (!storage) {
+    req.resume()
+    send(res, 501, { error: "collages are not configured" })
+    return
+  }
+  const { collages } = storage
+
+  if (id === undefined && req.method === "GET") {
+    req.resume()
+    const albumId = new URL(req.url ?? "/", "http://127.0.0.1").searchParams.get("albumId") ?? undefined
+    send(res, 200, listCollagesForUser(collages, ownerId, albumId))
+    return
+  }
+
+  if (id === undefined && req.method === "POST") {
+    const raw = await readJson(req, res)
+    if (raw === undefined) return
+    const parsed = parseCollageInput(raw)
+    if ("error" in parsed) {
+      send(res, 400, { error: parsed.error })
+      return
+    }
+    const { input } = parsed
+    if (!openAlbum(albums, ownerId, input.albumId)) {
+      send(res, 404, { error: "album not found" })
+      return
+    }
+    if (!photosBelongToAlbum(photos, ownerId, input.albumId, input.photoIds)) {
+      send(res, 400, { error: "photoIds must be your photos in this album" })
+      return
+    }
+
+    const now = new Date().toISOString()
+    const stored: StoredCollage = { id: randomUUID(), ...input, ownerId, createdAt: now, updatedAt: now }
+    collages.push(stored)
+    try {
+      storage.save(collages)
+    } catch (err) {
+      collages.pop()
+      throw err
+    }
+    send(res, 201, toPublicCollage(stored))
+    return
+  }
+
+  if (id !== undefined && req.method === "PUT") {
+    const raw = await readJson(req, res)
+    if (raw === undefined) return
+    const index = collages.findIndex((c) => c.id === id && c.ownerId === ownerId)
+    if (index === -1) {
+      send(res, 404, { error: "collage not found" })
+      return
+    }
+    const previous = collages[index]
+    const parsed = parseCollageInput(raw)
+    if ("error" in parsed) {
+      send(res, 400, { error: parsed.error })
+      return
+    }
+    const { input } = parsed
+    if (input.albumId !== previous.albumId) {
+      send(res, 400, { error: "a collage can't move to another album" })
+      return
+    }
+    if (!photosBelongToAlbum(photos, ownerId, previous.albumId, input.photoIds)) {
+      send(res, 400, { error: "photoIds must be your photos in this album" })
+      return
+    }
+
+    const updated: StoredCollage = {
+      ...previous,
+      name: input.name,
+      templateId: input.templateId,
+      photoIds: input.photoIds,
+      updatedAt: new Date().toISOString(),
+    }
+    collages[index] = updated
+    try {
+      storage.save(collages)
+    } catch (err) {
+      collages[index] = previous
+      throw err
+    }
+    send(res, 200, toPublicCollage(updated))
+    return
+  }
+
+  if (id !== undefined && req.method === "DELETE") {
+    req.resume()
+    const index = collages.findIndex((c) => c.id === id && c.ownerId === ownerId)
+    if (index === -1) {
+      send(res, 404, { error: "collage not found" })
+      return
+    }
+    const [removed] = collages.splice(index, 1)
+    try {
+      storage.save(collages)
+    } catch (err) {
+      collages.splice(index, 0, removed)
+      throw err
+    }
+    res.writeHead(204)
+    res.end()
+    return
+  }
+
+  req.resume()
+  send(res, 405, { error: "method not allowed" })
 }
 
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
@@ -169,7 +315,7 @@ async function handleImage(res: ServerResponse, ownerId: string, file: string, s
   res.end(bytes)
 }
 
-export function createAlbumServer({ albums, ownerId, photoStorage }: Options): Server {
+export function createAlbumServer({ albums, ownerId, photoStorage, collageStorage }: Options): Server {
   return createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1")
     const fail = (err: unknown) => {
@@ -185,6 +331,18 @@ export function createAlbumServer({ albums, ownerId, photoStorage }: Options): S
         return
       }
       handleUpload(req, res, albums, ownerId, albumId, photoStorage).catch(fail)
+      return
+    }
+
+    const collageRoute = url.pathname.match(/^\/api\/collages(?:\/([^/]+))?$/)
+    if (collageRoute) {
+      const collageId = collageRoute[1] === undefined ? undefined : safeDecode(collageRoute[1])
+      if (collageId === null) {
+        req.resume()
+        send(res, 400, { error: "bad collage id" })
+        return
+      }
+      handleCollages(req, res, albums, ownerId, collageId, collageStorage, photoStorage?.photos ?? []).catch(fail)
       return
     }
 
