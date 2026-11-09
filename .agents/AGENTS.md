@@ -10,11 +10,12 @@ your own user-level config, not here.
 | ------------- | --------------------------------------------------------------------------------------------- | ------------ |
 | `AGENTS.md`   | This file: current state, commands, rules                                                      | Agents and people |
 | `PROPOSAL.md` | Project specs, methodology, Git workflow, CI, commit and PR rules. **The source of truth.**   | **READ-ONLY.** Never edit it. |
-| `TODO.md`     | Product backlog (user stories US #1–#25, priorities, assignees, tasks)                        | People; agents update status only (see below) |
+| `PRODUCT_BACKLOG.md` | Product backlog (user stories US #1–#26, priorities, assignees, tasks). There is no `TODO.md`. | People; agents update status only (see below) |
 | `HISTORY.md`  | Log of meaningful changes, newest first                                                        | Agents and people |
 | `PLAN.md`     | *Optional, gitignored, one per lab.* Your own implementation and handoff notes (see below)    | You only |
 
-If this file and `PROPOSAL.md` disagree, `PROPOSAL.md` wins. Fix this file to match.
+If this file and `PROPOSAL.md` disagree, `PROPOSAL.md` wins, except for the explicitly authorized
+documentation-only workflow exception under *Rules*. Otherwise, fix this file to match.
 
 **`PLAN.md` (per-lab handoff):** you can keep your own `.agents/PLAN.md` holding the current task, the
 decisions made, what is done and what comes next, written so that a fresh session with no earlier
@@ -25,10 +26,14 @@ the whole team belongs in `AGENTS.md` or `HISTORY.md` instead.
 ## Project
 
 A web app for events. Users upload photos into albums that an admin creates. The app helps curate them:
-it flags duplicate, similar and low-quality photos, recommends the best shots, sorts photos by EXIF
-time and place, lets users edit photos (crop, rotate, color grade), arrange album/collage layouts, and
-preview and export the album. There are two roles: **admin** (creates and labels albums) and **user**
-(uploads to them, edits and curates). See `PROPOSAL.md` for the full spec and `TODO.md` for the stories.
+it flags duplicate, similar and low-quality photos, recommends the best shots, organizes photos
+chronologically from capture time and place in their metadata, lets users edit photos (crop, rotate,
+color grade), arrange album/collage layouts, and preview and export the album. There are two roles:
+**admin** (creates and labels albums) and **user** (uploads to them, edits and curates). See
+`PROPOSAL.md` for the full spec and `PRODUCT_BACKLOG.md` for the stories.
+
+Follow `PROPOSAL.md` when it and `PRODUCT_BACKLOG.md` conflict: only an admin creates and labels albums (US #1 is
+written "as a user"). Do not renumber stories or reassign people; that is a team decision.
 
 Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analysis module.
 
@@ -36,32 +41,88 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 
 <!-- Reconcile this section after every meaningful change. -->
 
-- **Front end:** `frontend/`. Vite + React 19 + TypeScript, ESLint. It is still the default Vite
-  scaffold, so no app features exist yet.
-- **Back end / photo analysis:** not started. The stack is not chosen yet. Record the choice here once
-  it is made.
-- **CI:** `.github/workflows/ci.yml` runs `npm ci` and `npm run build` in `frontend/` on PRs to `main`.
-  Lint, format, tests, path filtering, and the other automation listed in `PROPOSAL.md` are not set
-  up yet.
-- **Tests / formatter:** none configured yet.
+- **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Entry point is
+  `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. Hash routes: album list
+  (`#/`), album page (`#/albums/:id`), upload (`#/upload`), and all-photos gallery (`#/photos`).
+  The list is the album manager. Creating or editing an album there changes only the open page;
+  the server does not save new albums. The album page shows the title, a link back, and that
+  album's photos. Upload sends several JPG, PNG, GIF, or WebP files (10 MB each) to an album the
+  API already has (US #9, Natt, PR #14). The gallery toggles a grid and a single photo, with arrow
+  keys in single view (US #10, Alwayne, PR #15).
+- **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
+  with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
+  and loads `server/data/albums.json` and `server/data/photos.json`, and creates
+  `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
+  `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
+  `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
+  owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
+  serves that user's file. Albums contain only `id`, `title` and `ownerId`. There is no album
+  create, album delete, or remove-photo endpoint.
+- **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
+  `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Removing a photo
+  from an album, photo editing, layouts, export and photo analysis are not implemented.
+- **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
+  discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
+  hash parsing, upload selection and retry, and the gallery grid and single view. They do not call
+  the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
+  `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
+  loading/validation and HTTP reads. Photo upload and serving have no server tests. The server
+  test script names `albums.test.ts` explicitly; there is no separate server type-check or build script.
+- **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
+  `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
+  are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
+  end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
+  release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
+  and force pushes for everyone and requires a PR with one approval from someone other than the
+  last pusher; a new push dismisses earlier approvals. Lint is not clean on `main` (four
+  `react-hooks`/`react-refresh` errors in `AlbumManager.tsx`, `App.tsx`, `PhotoUpload.tsx`).
+- **Formatter / end-to-end tests:** neither is configured.
 
 ## Commands
+
+Use the latest Node 22 release to match CI. Run the following in separate terminals, each starting
+at the project root; there is no root package script.
 
 ```bash
 cd frontend
 npm install        # or `npm ci` for a clean, lockfile-exact install
-npm run dev        # http://localhost:5173
-npm run lint
-npm run build      # tsc -b && vite build. This is what CI runs
+npm run dev        # http://localhost:5173 — proxies /api to the server
 ```
 
-**Gate before a PR:** `npm run lint` and `npm run build` must pass in `frontend/`. When tests and a
-formatter are added, add them here too.
+```bash
+cd server
+npm start          # http://localhost:3000 — no npm install needed
+```
 
-## Rules (summarized from `PROPOSAL.md`)
+Checks and local build preview (run in the named directory):
 
-- **Never commit or push to `main`.** Work on a descriptively named branch, open a PR into `main`, and
-  merge only after CI passes and a QA member or team lead approves.
+```bash
+# frontend/
+npm test           # vitest run — frontend/test/
+npm run lint       # eslint .
+npm run build      # tsc -b && vite build
+npm run preview    # http://localhost:4173 — preview the built frontend
+
+# server/
+npm test           # node --experimental-strip-types --test test/albums.test.ts
+```
+
+Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
+both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
+does not include a proxy.
+
+**Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
+`server/`, `npm test` must pass. When a formatter is added, add it here too.
+
+## Rules (from `PROPOSAL.md`, with a documentation-only exception)
+
+- **Code changes:** never commit or push directly to `main`. Work on a descriptively named branch,
+  open a PR into `main`, and merge only after CI passes and a QA member or team lead approves.
+- **Documentation-only exception:** context files (including `.agents/`) and other documentation
+  may be committed and pushed directly to `main`; no separate branch or PR is required. This is an
+  explicitly authorized exception to `PROPOSAL.md`'s branch/PR workflow. Changes that also affect
+  code, tooling or CI follow the normal branch/PR workflow. The `main` ruleset currently rejects
+  every direct push, so documentation also goes through a PR until the ruleset allows it.
 - **Commit and PR titles** use `<type>(<optional scope>): <description>`, where type is one of
   `feat | fix | style | test | docs | refactor | chore`. Example: `feat(album): add drag-and-drop photo reordering`.
 - **PRs stay small**, cover one task, and say what changed, why, and which user story (`US #n`) they address.
@@ -115,7 +176,7 @@ Before you finish any change that affects behavior, structure, tooling, CI or de
 1. **`AGENTS.md`**: update *Current state*, *Commands* and the gate so they match the repo.
 2. **`HISTORY.md`**: add an entry at the top: date, branch, a one-line summary, and the user story if
    there is one.
-3. **`TODO.md`**: if the change finishes a backlog task, mark it done. Do not invent stories, renumber
+3. **`PRODUCT_BACKLOG.md`**: if the change finishes a backlog task, mark it done. Do not invent stories, renumber
    them or reassign people. Those are team decisions.
 4. Remove anything in these files that is no longer true.
 
