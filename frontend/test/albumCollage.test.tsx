@@ -15,7 +15,7 @@ const makePhotos = (count: number): Photo[] =>
 test("shows an empty-album message when there are no photos", () => {
   const html = renderToStaticMarkup(<AlbumCollage photos={[]} />)
 
-  expect(html).toContain("Can’t make a collage from this album")
+  expect(html).toContain("Can't make a collage from this album")
   expect(html).toContain("This album has 0 photos")
   expect(html).toContain("Add photos to the album to get started.")
   expect(html).not.toContain('class="ac-stage"')
