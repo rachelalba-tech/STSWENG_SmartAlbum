@@ -433,6 +433,7 @@ AC4: It is easy to understand where to trigger this function and the process to 
 
 As a user, I want to preview my complete album collage before exporting it so that I can verify its pictures and layout
 
+- **Status:** Done (Joed; read-only preview of the album's photos — no collage layouts or export yet)
 - **Estimate or Story Points:** 3
 - **Priority:** High
 - **Taken by:** Joed

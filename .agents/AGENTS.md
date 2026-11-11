@@ -79,6 +79,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   last pusher; a new push dismisses earlier approvals. Lint is not clean on `main` (four
   `react-hooks`/`react-refresh` errors in `AlbumManager.tsx`, `App.tsx`, `PhotoUpload.tsx`).
 - **Formatter / end-to-end tests:** neither is configured.
+- **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
+  `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
+  read-only page with no controls inside it. There are no collage layouts or export yet; export
+  (US #23) should render this same component. `frontend/test/albumPreview.test.tsx` covers it.
 
 ## Commands
 
