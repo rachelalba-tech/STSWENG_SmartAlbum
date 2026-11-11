@@ -184,8 +184,8 @@ function CollageEditor({
       setSavedKey(keyAtSave)
       setStatus(`Saved “${savedName}”`)
     } catch {
-      setSaveError("Couldn’t save the collage. Check your connection and try again.")
-      setStatus("Couldn’t save the collage")
+      setSaveError("Couldn't save the collage. Check your connection and try again.")
+      setStatus("Couldn't save the collage")
     } finally {
       setSaving(false)
     }

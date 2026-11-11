@@ -102,7 +102,7 @@ export function SavedCollagesPanel({ album, photos, collages, onSave, onDelete, 
 
       {!template && (
         <p role="alert" className="sc-warning">
-          This collage’s layout is no longer available, so it can’t be displayed.
+          This collage's layout is no longer available, so it can't be displayed.
         </p>
       )}
       {template && missing > 0 && (
