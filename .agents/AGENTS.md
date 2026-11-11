@@ -10,7 +10,7 @@ your own user-level config, not here.
 | ------------- | --------------------------------------------------------------------------------------------- | ------------ |
 | `AGENTS.md`   | This file: current state, commands, rules                                                      | Agents and people |
 | `PROPOSAL.md` | Project specs, methodology, Git workflow, CI, commit and PR rules. **The source of truth.**   | **READ-ONLY.** Never edit it. |
-| `TODO.md`     | Product backlog (user stories US #1–#25, priorities, assignees, tasks)                        | People; agents update status only (see below) |
+| `PRODUCT_BACKLOG.md` | Product backlog (user stories US #1–#26, priorities, assignees, tasks). There is no `TODO.md`. | People; agents update status only (see below) |
 | `HISTORY.md`  | Log of meaningful changes, newest first                                                        | Agents and people |
 | `PLAN.md`     | *Optional, gitignored, one per lab.* Your own implementation and handoff notes (see below)    | You only |
 
@@ -30,11 +30,10 @@ it flags duplicate, similar and low-quality photos, recommends the best shots, o
 chronologically from capture time and place in their metadata, lets users edit photos (crop, rotate,
 color grade), arrange album/collage layouts, and preview and export the album. There are two roles:
 **admin** (creates and labels albums) and **user** (uploads to them, edits and curates). See
-`PROPOSAL.md` for the full spec and `TODO.md` for the stories.
+`PROPOSAL.md` for the full spec and `PRODUCT_BACKLOG.md` for the stories.
 
-Follow `PROPOSAL.md` when it and `TODO.md` conflict: only an admin creates and labels albums (US #1 is
-written "as a user"). In `TODO.md`, US #15 is used twice (recommend best shots, then crop), with US #14
-between them. Do not renumber or reassign; that is a team decision.
+Follow `PROPOSAL.md` when it and `PRODUCT_BACKLOG.md` conflict: only an admin creates and labels albums (US #1 is
+written "as a user"). Do not renumber stories or reassign people; that is a team decision.
 
 Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analysis module.
 
@@ -43,30 +42,45 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 <!-- Reconcile this section after every meaningful change. -->
 
 - **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Entry point is
-  `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. US #3 is implemented for the
-  demo user: a hash-routed album list (`#/`) and album page (`#/albums/:id`), with loading, empty and
-  error states. The album page currently shows only its title and a link back to the list.
+  `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. Hash routes: album list
+  (`#/`), album page (`#/albums/:id`), upload (`#/upload`), and all-photos gallery (`#/photos`).
+  The list is the album manager. Creating or editing an album there changes only the open page;
+  the server does not save new albums. The album page shows the title, a link back, and that
+  album's photos. Upload sends several JPG, PNG, GIF, or WebP files (10 MB each) to an album the
+  API already has (US #9, Natt, PR #14). The gallery toggles a grid and a single photo, with arrow
+  keys in single view (US #10, Alwayne, PR #15).
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
-  and loads `server/data/albums.json` into memory. `GET /api/albums` lists the current user's albums;
-  `GET /api/albums/:id` returns an owned album or 404 for a missing or other user's album. Albums
-  contain only `id`, `title` and `ownerId`; there are no write endpoints.
+  and loads `server/data/albums.json` and `server/data/photos.json`, and creates
+  `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
+  `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
+  `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
+  owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
+  serves that user's file. Albums contain only `id`, `title` and `ownerId`. There is no album
+  create, album delete, or remove-photo endpoint.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
-  `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Album creation,
-  deletion, photo upload/viewing/editing, layouts, export and photo analysis are not implemented.
+  `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Removing a photo
+  from an album, photo editing, layouts, export and photo analysis are not implemented.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
-  discovers only `test/**/*.test.{ts,tsx}`. The four current tests cover static album rendering and
-  hash parsing; they do not exercise browser interactions or API fetching. The frontend build
-  type-checks `src/` and `vite.config.ts`, not `test/`. `server/test/albums.test.ts` has seven tests
-  covering ownership filtering, seed-file loading/validation and HTTP reads. The server test script
-  names this file explicitly; there is no separate server type-check or build script.
+  discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
+  hash parsing, upload selection and retry, and the gallery grid and single view. They do not call
+  the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
+  `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
+  loading/validation and HTTP reads. Photo upload and serving have no server tests. The server
+  test script names `albums.test.ts` explicitly; there is no separate server type-check or build script.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
   `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
   are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
   end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
-  release automation are not configured in the repo. GitHub branch protection/review settings
-  cannot be established from these files.
+  release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
+  and force pushes for everyone and requires a PR with one approval from someone other than the
+  last pusher; a new push dismisses earlier approvals. Lint is not clean on `main` (four
+  `react-hooks`/`react-refresh` errors in `AlbumManager.tsx`, `App.tsx`, `PhotoUpload.tsx`).
 - **Formatter / end-to-end tests:** neither is configured.
+- **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
+  `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
+  read-only page with no controls inside it. There are no collage layouts or export yet; export
+  (US #23) should render this same component. `frontend/test/albumPreview.test.tsx` covers it.
 
 ## Commands
 
@@ -111,7 +125,8 @@ does not include a proxy.
 - **Documentation-only exception:** context files (including `.agents/`) and other documentation
   may be committed and pushed directly to `main`; no separate branch or PR is required. This is an
   explicitly authorized exception to `PROPOSAL.md`'s branch/PR workflow. Changes that also affect
-  code, tooling or CI follow the normal branch/PR workflow.
+  code, tooling or CI follow the normal branch/PR workflow. The `main` ruleset currently rejects
+  every direct push, so documentation also goes through a PR until the ruleset allows it.
 - **Commit and PR titles** use `<type>(<optional scope>): <description>`, where type is one of
   `feat | fix | style | test | docs | refactor | chore`. Example: `feat(album): add drag-and-drop photo reordering`.
 - **PRs stay small**, cover one task, and say what changed, why, and which user story (`US #n`) they address.
@@ -165,7 +180,7 @@ Before you finish any change that affects behavior, structure, tooling, CI or de
 1. **`AGENTS.md`**: update *Current state*, *Commands* and the gate so they match the repo.
 2. **`HISTORY.md`**: add an entry at the top: date, branch, a one-line summary, and the user story if
    there is one.
-3. **`TODO.md`**: if the change finishes a backlog task, mark it done. Do not invent stories, renumber
+3. **`PRODUCT_BACKLOG.md`**: if the change finishes a backlog task, mark it done. Do not invent stories, renumber
    them or reassign people. Those are team decisions.
 4. Remove anything in these files that is no longer true.
 
