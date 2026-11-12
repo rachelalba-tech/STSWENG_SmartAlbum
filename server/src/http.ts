@@ -173,7 +173,7 @@ export function createAlbumServer({ albums, ownerId, photoStorage }: Options): S
   return createServer((req, res) => {
     res.setHeader(
       "Access-Control-Allow-Origin",
-      "https://stsweng-smartalbum-1.onrender.com" //to be replaced with frontend live url
+      "https://stsweng-smartalbum-1.onrender.com" 
     )
 
     res.setHeader(
