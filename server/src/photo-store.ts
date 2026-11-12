@@ -19,7 +19,6 @@ function isStoredPhoto(value: unknown): value is StoredPhoto {
   )
 }
 
-// A missing file just means nothing has been uploaded yet.
 export function loadPhotos(file: string): StoredPhoto[] {
   if (!existsSync(file)) return []
   const parsed: unknown = JSON.parse(readFileSync(file, "utf8"))
@@ -29,8 +28,6 @@ export function loadPhotos(file: string): StoredPhoto[] {
   return parsed
 }
 
-// Write to a temp file and rename it into place, so a crash mid-write can never
-// leave a half-written photos.json that loses the existing photos.
 export function savePhotos(file: string, photos: StoredPhoto[]): void {
   const tmp = `${file}.tmp`
   writeFileSync(tmp, JSON.stringify(photos, null, 2))
