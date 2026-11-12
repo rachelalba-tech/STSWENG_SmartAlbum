@@ -5,6 +5,7 @@ import { fetchAlbum, fetchAlbums, fetchPhotos } from "./api.ts"
 import type { Album, Photo, User } from "./api.ts"
 // import { AlbumList } from "./AlbumList.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
+import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
 import { PhotoUpload } from "./PhotoUpload.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
@@ -87,7 +88,7 @@ function AlbumListRoute() {
   )
 }
 
-function AlbumRoute({ id }: { id: string }) {
+function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) {
   const [album, setAlbum] = useState<Album | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -136,7 +137,7 @@ function AlbumRoute({ id }: { id: string }) {
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      <AlbumPage album={album} photos={photos} />
+      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} />}
       {photoError && <p>{photoError}</p>}
     </>
   )
@@ -217,7 +218,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(readSession)
   const hash = useHash()
   const albumId = albumIdFromHash(hash)
-  const page = albumId ? "albums" : pageFromHash(hash)
+  const previewId = previewAlbumIdFromHash(hash)
+  const page = albumId || previewId ? "albums" : pageFromHash(hash)
 
   if (!currentUser) {
     return (

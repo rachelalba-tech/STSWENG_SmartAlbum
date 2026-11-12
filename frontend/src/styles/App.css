@@ -201,6 +201,33 @@
   margin-bottom: 16px;
 }
 
+.album-preview-wrap {
+  width: min(720px, 100%);
+  text-align: left;
+}
+
+.album-preview {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+
+.album-preview-photos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.album-preview-photos img {
+  display: block;
+  width: 100%;
+}
+
 .ticks {
   position: relative;
   width: 100%;
