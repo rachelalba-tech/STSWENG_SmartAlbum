@@ -7,6 +7,12 @@ export function AlbumPage({ album, photos = [] }: { album: Album; photos?: Photo
       <a className="back" href="#/">
         All albums
       </a>
+      <a
+        className="album-preview-link"
+        href={`#/albums/${encodeURIComponent(album.id)}/preview`}
+      >
+        Preview album
+      </a>
       <PhotoGallery
         photos={photos}
         title={album.title}

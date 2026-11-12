@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-12 · fix/main-white-screen · fix(album): restore preview parser, route and link lost during merge conflict resolution (US #22).
 - 2026-11-12 · feat/photos-gallery · fix(auth): restart stale backend code and redesign login.
 - 2026-11-12 · feat/photos-gallery · feat(auth): add file-backed basic login, persisted frontend session and logout (US #26).
 - 2026-10-31 · feat/photos-gallery · feat(album): reuse grid and single-photo gallery views inside albums (US #10).
