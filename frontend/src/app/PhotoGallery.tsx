@@ -5,7 +5,21 @@ import type { Photo } from "./api.ts"
 
 type GalleryView = "grid" | "single"
 
-export function PhotoGallery({ photos }: { photos: Photo[] }) {
+type PhotoGalleryProps = {
+  photos: Photo[]
+  title?: string
+  subtitle?: string
+  emptyTitle?: string
+  emptyDescription?: string
+}
+
+export function PhotoGallery({
+  photos,
+  title = "All photos",
+  subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
+  emptyTitle = "No photos yet",
+  emptyDescription = "Upload photos to an album and they will appear here.",
+}: PhotoGalleryProps) {
   const [view, setView] = useState<GalleryView>("grid")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const safeIndex = Math.min(selectedIndex, Math.max(photos.length - 1, 0))
@@ -37,10 +51,8 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
     <section className="pg" aria-labelledby="photos-heading">
       <div className="pg-header">
         <div>
-          <h2 id="photos-heading">All photos</h2>
-          <p className="pg-subtitle">
-            {photos.length} uploaded photo{photos.length === 1 ? "" : "s"}
-          </p>
+          <h2 id="photos-heading">{title}</h2>
+          <p className="pg-subtitle">{subtitle}</p>
         </div>
 
         {photos.length > 0 && (
@@ -70,8 +82,8 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
       {photos.length === 0 ? (
         <div className="pg-empty">
           <Grid3X3 size={32} aria-hidden="true" />
-          <h3>No photos yet</h3>
-          <p>Upload photos to an album and they will appear here.</p>
+          <h3>{emptyTitle}</h3>
+          <p>{emptyDescription}</p>
           <a href="#/upload">Upload photos</a>
         </div>
       ) : view === "grid" ? (

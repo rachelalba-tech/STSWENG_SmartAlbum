@@ -11,6 +11,7 @@ import {
   toPublic,
   type StoredPhoto,
 } from "./photos.ts"
+import { authenticateUser, type User } from "./users.ts"
 
 export type PhotoStorage = {
   /** Live list of stored photos; new uploads are pushed onto it. */
@@ -24,11 +25,14 @@ export type PhotoStorage = {
 type Options = {
   albums: Album[]
   ownerId: string
+  users?: User[]
   /** Leave out to run without photo support (uploads then answer 501). */
   photoStorage?: PhotoStorage
 }
 
 const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+const MAX_LOGIN_BYTES = 8 * 1024
 
 function send(res: ServerResponse, status: number, body: unknown) {
   const bytes = encoder.encode(JSON.stringify(body))
@@ -152,6 +156,36 @@ async function handleUpload(
   send(res, 201, toPublic(stored))
 }
 
+async function handleLogin(req: IncomingMessage, res: ServerResponse, users: User[]) {
+  const body = await readBody(req, MAX_LOGIN_BYTES)
+  if (body === null) {
+    send(res, 413, { error: "login request too large" })
+    return
+  }
+
+  let credentials: unknown
+  try {
+    credentials = JSON.parse(decoder.decode(body))
+  } catch {
+    send(res, 400, { error: "invalid login request" })
+    return
+  }
+
+  if (typeof credentials !== "object" || credentials === null) {
+    send(res, 400, { error: "invalid login request" })
+    return
+  }
+
+  const values = credentials as Record<string, unknown>
+  if (typeof values.username !== "string" || typeof values.password !== "string") {
+    send(res, 400, { error: "invalid login request" })
+    return
+  }
+
+  const user = authenticateUser(users, values.username, values.password)
+  send(res, user ? 200 : 401, user ?? { error: "invalid username or password" })
+}
+
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
   const photo = storage?.photos.find((p) => p.file === file && p.ownerId === ownerId)
   if (!storage || !photo) {
@@ -169,12 +203,17 @@ async function handleImage(res: ServerResponse, ownerId: string, file: string, s
   res.end(bytes)
 }
 
-export function createAlbumServer({ albums, ownerId, photoStorage }: Options): Server {
+export function createAlbumServer({ albums, ownerId, users = [], photoStorage }: Options): Server {
   return createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1")
     const fail = (err: unknown) => {
       console.error(err)
       if (!res.headersSent) send(res, 500, { error: "server error" })
+    }
+
+    if (url.pathname === "/api/login" && req.method === "POST") {
+      handleLogin(req, res, users).catch(fail)
+      return
     }
 
     const upload = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos$/)

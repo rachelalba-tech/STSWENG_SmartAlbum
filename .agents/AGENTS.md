@@ -115,6 +115,14 @@ Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#p
 both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
 does not include a proxy.
 
+Figma Make lifecycle checks run from the project root:
+
+```bash
+figma make verify-bootstrap
+figma make verify-deploy
+figma make verify-deploy-preview --skip
+```
+
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
 `server/`, `npm test` must pass. When a formatter is added, add it here too.
 
