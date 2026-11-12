@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
 import { fetchAlbum, fetchAlbums, fetchPhotos } from "./api.ts"
-import type { Album, Photo } from "./api.ts"
+import type { Album, Photo, User } from "./api.ts"
 // import { AlbumList } from "./AlbumList.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AppTabs } from "./AppTabs.tsx"
@@ -11,6 +11,21 @@ import { PhotoGallery } from "./PhotoGallery.tsx"
 import { albumIdFromHash, pageFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
+import { LoginPage } from "./LoginPage.tsx"
+
+const SESSION_KEY = "smart-album-user"
+
+function readSession(): User | null {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(SESSION_KEY) ?? "null")
+    if (typeof value !== "object" || value === null) return null
+    const user = value as Record<string, unknown>
+    if (typeof user.id !== "string" || typeof user.username !== "string") return null
+    return { id: user.id, username: user.username }
+  } catch {
+    return null
+  }
+}
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -95,8 +110,6 @@ function AlbumRoute({ id }: { id: string }) {
 
   useEffect(() => {
     let active = true
-    setPhotos([])
-    setPhotoError(null)
     fetchPhotos(id).then(
       (next) => {
         if (active) setPhotos(next)
@@ -201,18 +214,42 @@ function PhotosRoute() {
 }
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<User | null>(readSession)
   const hash = useHash()
   const albumId = albumIdFromHash(hash)
   const page = albumId ? "albums" : pageFromHash(hash)
+
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLogin={(user) => {
+          window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
+          setCurrentUser(user)
+        }}
+      />
+    )
+  }
 
   return (
     <section id="center">
       <header className="app-header">
         <h1>Smart Photo Album</h1>
+        <div className="app-account">
+          <span>{currentUser.username}</span>
+          <button
+            type="button"
+            onClick={() => {
+              window.localStorage.removeItem(SESSION_KEY)
+              setCurrentUser(null)
+            }}
+          >
+            Log out
+          </button>
+        </div>
       </header>
       <AppTabs active={page} />
       {albumId ? (
-        <AlbumRoute id={albumId} />
+        <AlbumRoute key={albumId} id={albumId} />
       ) : page === "upload" ? (
         <UploadRoute />
       ) : page === "photos" ? (

@@ -4,6 +4,11 @@ export type Album = {
   ownerId: string
 }
 
+export type User = {
+  id: string
+  username: string
+}
+
 export type Photo = {
   id: string
   src: string
@@ -24,6 +29,30 @@ function isAlbum(value: unknown): value is Album {
     typeof album.title === "string" &&
     typeof album.ownerId === "string"
   )
+}
+
+function isUser(value: unknown): value is User {
+  if (typeof value !== "object" || value === null) return false
+  const user = value as Record<string, unknown>
+  return (
+    typeof user.id === "string" &&
+    user.id !== "" &&
+    typeof user.username === "string" &&
+    user.username !== ""
+  )
+}
+
+export async function login(username: string, password: string): Promise<User> {
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  })
+  if (res.status === 401) throw new Error("Incorrect username or password")
+  if (!res.ok) throw new Error("Could not sign in")
+  const user: unknown = await res.json()
+  if (!isUser(user)) throw new Error("Could not sign in")
+  return user
 }
 
 // Required: id, src and albumId  

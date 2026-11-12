@@ -416,6 +416,7 @@ As a user I want to be able to add pictures to albums, upload pictures, delete p
 
 As a user and admin I want to be able to log in to my account using my username and password so that I can see the event pictures
 
+- **Status:** In progress — basic user login is functional; role-specific admin login remains pending
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** —
