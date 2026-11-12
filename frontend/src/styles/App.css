@@ -193,6 +193,10 @@
   text-align: left;
 }
 
+.album--gallery {
+  width: 100%;
+}
+
 .back {
   margin-bottom: 16px;
 }

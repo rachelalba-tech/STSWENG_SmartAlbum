@@ -46,7 +46,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. The hash-routed app includes
   albums (`#/` and `#/albums/:id`), multi-photo upload (`#/upload`) and an all-photo library
   (`#/photos`). The photo library implements US #10 with a responsive five-column overview,
-  expanded single-photo view, adjacent controls and keyboard navigation.
+  expanded single-photo view, adjacent controls and keyboard navigation. Opened albums reuse the
+  same grid/single-photo interface with album-scoped photos and copy.
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json` into memory. `GET /api/albums` lists the current user's albums;
@@ -58,8 +59,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `demo-user`; login and admin/user roles are not implemented (US #25, #23, #24). Album creation,
   deletion, photo editing, layouts, export and photo analysis are not implemented.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
-  discovers only `test/**/*.test.{ts,tsx}`. The 25 frontend tests cover albums, upload behavior,
-  routes/tabs, the photo grid, view switching and single-photo navigation; they do not exercise live
+  discovers only `test/**/*.test.{ts,tsx}`. The 27 frontend tests cover albums, upload behavior,
+  routes/tabs, the global and album photo grids, view switching and single-photo navigation; they do not exercise live
   API fetching. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. The server test script names this file explicitly; there is no
