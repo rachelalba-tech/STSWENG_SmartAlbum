@@ -12,6 +12,8 @@ test("login is the first screen for a signed-out user", () => {
   render(<App />)
 
   expect(screen.getByRole("heading", { name: "Welcome back" })).toBeTruthy()
+  expect(screen.getByRole("heading", { name: "Smart Photo Album" })).toBeTruthy()
+  expect(screen.getByLabelText("Logo placeholder")).toBeTruthy()
   expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull()
 })
 

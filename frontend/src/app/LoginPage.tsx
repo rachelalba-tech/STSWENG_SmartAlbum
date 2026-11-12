@@ -30,43 +30,57 @@ export function LoginPage({ onLogin, authenticate = login }: LoginPageProps) {
 
   return (
     <main className="login-page">
-      <section className="login-card" aria-labelledby="login-title">
-        <div className="login-brand" aria-hidden="true">
-          <Images size={30} />
+      <section className="login-shell" aria-labelledby="login-title">
+        <div className="login-showcase">
+          <div className="login-logo-placeholder" aria-label="Logo placeholder">
+            <Images size={34} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="login-product-label">Photo management, simplified</p>
+            <h1>Smart Photo Album</h1>
+            <p className="login-product-copy">
+              Keep every event memory organized, accessible, and ready to share.
+            </p>
+          </div>
         </div>
-        <p className="login-eyebrow">Smart Photo Album</p>
-        <h1 id="login-title">Welcome back</h1>
-        <p className="login-intro">Sign in to view, organize, and upload your event photos.</p>
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          <label htmlFor="login-username">Username</label>
-          <input
-            id="login-username"
-            name="username"
-            autoComplete="username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-          />
+        <div className="login-panel">
+          <div className="login-panel-content">
+            <p className="login-eyebrow">Account access</p>
+            <h2 id="login-title">Welcome back</h2>
+            <p className="login-intro">Enter your details to continue to your photo library.</p>
 
-          <label htmlFor="login-password">Password</label>
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
+            <form className="login-form" onSubmit={handleSubmit}>
+              <label htmlFor="login-username">Username</label>
+              <input
+                id="login-username"
+                name="username"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+              />
 
-          {error && <p className="login-error" role="alert">{error}</p>}
+              <label htmlFor="login-password">Password</label>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
 
-          <button type="submit" disabled={submitting}>
-            <LogIn size={17} aria-hidden="true" />
-            {submitting ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+              {error && <p className="login-error" role="alert">{error}</p>}
+
+              <button type="submit" disabled={submitting}>
+                <LogIn size={17} aria-hidden="true" />
+                {submitting ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+          </div>
+        </div>
       </section>
     </main>
   )

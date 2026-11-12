@@ -48,7 +48,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   (`#/photos`). The photo library implements US #10 with a responsive five-column overview,
   expanded single-photo view, adjacent controls and keyboard navigation. Opened albums reuse the
   same grid/single-photo interface with album-scoped photos and copy. Signed-out visitors first see
-  a login form; successful login persists the public user in browser storage and exposes logout.
+  a split branding/login screen; successful login persists the public user in browser storage and
+  exposes logout. The shared visual palette is white, near-black and blue.
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads albums, photos and users from `server/data/`. `POST /api/login` validates the seeded
@@ -76,9 +77,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   release automation are not configured in the repo. GitHub branch protection/review settings
   cannot be established from these files.
 - **Figma Make:** `.mise.toml` pins Node 22. `.figma/make/install` installs the frontend lockfile,
-  and `.figma/make/dev` supervises the API and Vite together. Static frontend deploy verification
-  is configured, but deploy previews are skipped because the album experience requires the
-  separately hosted Node API.
+  and `.figma/make/dev` supervises the API and Vite together. `.figma/make/dev.json` restarts the
+  composed server when backend source or startup data changes, preventing stale API behavior while
+  Vite hot-reloads the frontend. Static frontend deploy verification is configured, but deploy
+  previews are skipped because the album experience requires the separately hosted Node API.
 - **Formatter / end-to-end tests:** neither is configured.
 
 ## Commands
