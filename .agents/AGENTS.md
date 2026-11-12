@@ -68,14 +68,13 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. Photo upload and serving have no server tests. The server
   test script names `albums.test.ts` explicitly; there is no separate server type-check or build script.
-- **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` only, on Node 22. Frontend job:
-  `npm ci`, `npm test`, `npm run build`. Server job: `npm test`. Both jobs run for every PR; there
-  are no push triggers, path filters or cancellation of outdated runs. Linting, formatting and
-  end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
+- **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, on Node 22.
+  Frontend job: `npm ci`, `npm run lint`, `npm test`, `npm run build`. Server job: `npm test`.
+  There are no path filters or cancellation of outdated runs. Formatting and end-to-end tests are
+  not in CI. PR-title validation, automatic labeling, dependency updates and
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
   and force pushes for everyone and requires a PR with one approval from someone other than the
-  last pusher; a new push dismisses earlier approvals. Lint is not clean on `main` (four
-  `react-hooks`/`react-refresh` errors in `AlbumManager.tsx`, `App.tsx`, `PhotoUpload.tsx`).
+  last pusher; a new push dismisses earlier approvals.
 - **Formatter / end-to-end tests:** neither is configured.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
   `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a

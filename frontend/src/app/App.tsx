@@ -96,8 +96,6 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
 
   useEffect(() => {
     let active = true
-    setPhotos([])
-    setPhotoError(null)
     fetchPhotos(id).then(
       (next) => {
         if (active) setPhotos(next)
@@ -217,7 +215,7 @@ export default function App() {
         // Keyed so switching between album and preview of the same id refetches and remounts.
         <AlbumRoute key={"preview:" + previewId} id={previewId} preview />
       ) : albumId ? (
-        <AlbumRoute id={albumId} />
+        <AlbumRoute key={albumId} id={albumId} />
       ) : page === "upload" ? (
         <UploadRoute />
       ) : page === "photos" ? (

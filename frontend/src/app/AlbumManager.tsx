@@ -54,17 +54,16 @@ const MOCK_INVITE_POOL: Collaborator[] = [
 // Small UI primitives (replace ./ui/* and ImageWithFallback) 
 
 function Img({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const [failed, setFailed] = useState(false)
-  useEffect(() => setFailed(false), [src])
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
 
-  if (failed) {
+  if (failedSrc === src) {
     return (
       <div className="am-img-fallback">
         <ImageIcon size={24} />
       </div>
     )
   }
-  return <img src={src} alt={alt} className={className} loading="lazy" onError={() => setFailed(true)} />
+  return <img src={src} alt={alt} className={className} loading="lazy" onError={() => setFailedSrc(src)} />
 }
 
 // Native <dialog> rendered in a portal. Handles Esc, focus trapping and backdrop for free.  
