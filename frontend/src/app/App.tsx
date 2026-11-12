@@ -134,7 +134,7 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} />}
+      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} />}
       {photoError && <p>{photoError}</p>}
     </>
   )
