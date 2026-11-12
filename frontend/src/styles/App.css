@@ -197,6 +197,24 @@
   width: 100%;
 }
 
+.album-preview-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.album-preview-link:hover {
+  text-decoration: underline;
+}
+
+.album-preview-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .back {
   margin-bottom: 16px;
 }

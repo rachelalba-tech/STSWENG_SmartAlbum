@@ -9,7 +9,7 @@ import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
 import { PhotoUpload } from "./PhotoUpload.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
-import { albumIdFromHash, pageFromHash } from "./route.ts"
+import { albumIdFromHash, pageFromHash, previewAlbumIdFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
 import { LoginPage } from "./LoginPage.tsx"
@@ -250,7 +250,9 @@ export default function App() {
         </div>
       </header>
       <AppTabs active={page} />
-      {albumId ? (
+      {previewId ? (
+        <AlbumRoute key={`preview:${previewId}`} id={previewId} preview />
+      ) : albumId ? (
         <AlbumRoute key={albumId} id={albumId} />
       ) : page === "upload" ? (
         <UploadRoute />
