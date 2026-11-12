@@ -10,29 +10,5 @@
     "tags": [],
     "ownerId": "demo-user",
     "file": "dc148c2b-a482-4ddb-8d7f-1646d133f1df.jpg"
-  },
-  {
-    "id": "707157dd-a0be-4cf3-99ed-1c8a1439179b",
-    "src": "/api/uploads/707157dd-a0be-4cf3-99ed-1c8a1439179b.jpg",
-    "thumbnail": "/api/uploads/707157dd-a0be-4cf3-99ed-1c8a1439179b.jpg",
-    "title": "harrison-hargrave-Tmev9UoX00M-unsplash",
-    "description": "",
-    "date": "2026-11-07",
-    "albumId": "opening",
-    "tags": [],
-    "ownerId": "demo-user",
-    "file": "707157dd-a0be-4cf3-99ed-1c8a1439179b.jpg"
-  },
-  {
-    "id": "993fd8bd-508c-4656-8705-da2007956a54",
-    "src": "/api/uploads/993fd8bd-508c-4656-8705-da2007956a54.jpg",
-    "thumbnail": "/api/uploads/993fd8bd-508c-4656-8705-da2007956a54.jpg",
-    "title": "hi",
-    "description": "",
-    "date": "2026-11-07",
-    "albumId": "opening",
-    "tags": [],
-    "ownerId": "demo-user",
-    "file": "993fd8bd-508c-4656-8705-da2007956a54.jpg"
   }
 ]

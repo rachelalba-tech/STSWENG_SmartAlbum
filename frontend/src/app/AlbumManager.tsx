@@ -2,13 +2,9 @@ import { useEffect, useRef, useState } from "react"
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react"
 import { createPortal } from "react-dom"
 import {
-  Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon, LayoutGrid, Images,
+  Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon,
 } from "lucide-react"
 import "../styles/AlbumManager.css"
-import { AlbumCollage } from "./AlbumCollage"
-import type { SaveHandler } from "./AlbumCollage"
-import { SavedCollagesPanel } from "./SavedCollages"
-import type { CollageDraft, SavedCollage } from "./collageStore"
 
 // Interfaces 
 export interface Photo {
@@ -45,10 +41,6 @@ interface AlbumManagerProps {
   onAlbumCreate: (album: ManagedAlbum) => void
   onAlbumSelect: (albumId: string | null) => void
   onAlbumUpdate: (album: ManagedAlbum) => void
-  /** Saved collages. Pass these (with the handlers below) to enable saving and viewing. */
-  collages?: SavedCollage[]
-  onCollageSave?: (draft: CollageDraft) => Promise<SavedCollage>
-  onCollageDelete?: (id: string) => Promise<void>
 }
 
 type Role = Collaborator["role"]
@@ -385,68 +377,9 @@ function CollaboratorsDialog({ album, onUpdate }: { album: ManagedAlbum; onUpdat
   )
 }
 
-function CollageDialog({
-  album, photos, onSave,
-}: { album: ManagedAlbum; photos: Photo[]; onSave?: (draft: CollageDraft) => Promise<SavedCollage> }) {
-  const [open, setOpen] = useState(false)
-  const albumPhotos = photos.filter((p) => p.albumId === album.id)
-  const handleSave: SaveHandler | undefined = onSave && ((draft) => onSave({ ...draft, albumId: album.id }))
-
-  return (
-    <>
-      <IconButton label="Create collage" onClick={() => setOpen(true)}>
-        <LayoutGrid size={14} />
-      </IconButton>
-      <Modal open={open} onClose={() => setOpen(false)} title={<><LayoutGrid size={16} /> Collage: {album.name}</>}>
-        <AlbumCollage
-          photos={albumPhotos}
-          defaultName={`${album.name} collage`}
-          onSave={handleSave}
-          onClose={() => setOpen(false)}
-        />
-      </Modal>
-    </>
-  )
-}
-
-function SavedCollagesDialog({
-  album, photos, collages, onSave, onDelete,
-}: {
-  album: ManagedAlbum
-  photos: Photo[]
-  collages: SavedCollage[]
-  onSave?: (draft: CollageDraft) => Promise<SavedCollage>
-  onDelete?: (id: string) => Promise<void>
-}) {
-  const [open, setOpen] = useState(false)
-  const albumPhotos = photos.filter((p) => p.albumId === album.id)
-  const count = collages.filter((c) => c.albumId === album.id).length
-  const handleSave: SaveHandler | undefined = onSave && ((draft) => onSave({ ...draft, albumId: album.id }))
-
-  return (
-    <>
-      <IconButton label={`Saved collages (${count})`} onClick={() => setOpen(true)}>
-        <Images size={14} />
-      </IconButton>
-      <Modal open={open} onClose={() => setOpen(false)} title={<><Images size={16} /> Saved collages: {album.name}</>}>
-        <SavedCollagesPanel
-          album={album}
-          photos={albumPhotos}
-          collages={collages}
-          onSave={handleSave}
-          onDelete={onDelete}
-          onClose={() => setOpen(false)}
-        />
-      </Modal>
-    </>
-  )
-}
-
 // Main album components 
 
-export function AlbumManager({
-  albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate, collages, onCollageSave, onCollageDelete,
-}: AlbumManagerProps) {
+export function AlbumManager({ albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate }: AlbumManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDescription, setNewDescription] = useState("")
@@ -581,16 +514,6 @@ export function AlbumManager({
                   <div className="am-card-title">
                     <span>{album.name}</span>
                     <div className="am-actions">
-                      <CollageDialog album={album} photos={photos} onSave={onCollageSave} />
-                      {collages && (
-                        <SavedCollagesDialog
-                          album={album}
-                          photos={photos}
-                          collages={collages}
-                          onSave={onCollageSave}
-                          onDelete={onCollageDelete}
-                        />
-                      )}
                       <CollaboratorsDialog album={album} onUpdate={onAlbumUpdate} />
                       <AlbumCoverDialog album={album} photos={photos} onUpdate={onAlbumUpdate} />
                       <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />
@@ -621,8 +544,7 @@ export function AlbumManager({
       )}
 
       <div className="am-stats">
-        <h2>Collection Overview</h2>
-        <br></br>
+        <h3>Collection overview</h3>
         <div className="am-stats-grid">
           <div className="am-stat"><strong>{albums.length}</strong><span>Albums</span></div>
           <div className="am-stat"><strong>{photos.length}</strong><span>Total photos</span></div>

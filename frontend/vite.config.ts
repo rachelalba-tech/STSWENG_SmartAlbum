@@ -4,18 +4,18 @@ import { defineConfig } from 'vitest/config'
 
 
 export default defineConfig({
-  base: '/',
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "https://stsweng-smartalbum.onrender.com/",
+      "/api": process.env.FIGMA
+        ? `http://localhost:${process.env.API_PORT ?? "3000"}`
+        : "http://localhost:3000",
     },
   },
 
   test: {
     environment: 'jsdom',
     globals: true,
-    pool: "vmThreads",
     include: ['test/**/*.test.{ts,tsx}'],
   },
 })

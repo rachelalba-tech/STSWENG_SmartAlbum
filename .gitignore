@@ -11,8 +11,6 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
-.env.*
 
 # Editor directories and files
 .vscode/*
@@ -27,4 +25,3 @@ dist-ssr
 
 # Per-lab agent handoff plan (see .agents/AGENTS.md)
 .agents/PLAN.md
-
