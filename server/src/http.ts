@@ -212,7 +212,7 @@ export function createAlbumServer({ albums, ownerId, photoStorage }: Options): S
 
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET, POST, OPTIONS"
+      "GET, POST, DELETE, OPTIONS"
     )
     
     res.setHeader(

@@ -98,7 +98,7 @@ export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
 // The file stays in the library. Only the album link is cleared.
 export async function removePhotoFromAlbum(albumId: string, photoId: string): Promise<void> {
   const res = await fetch(
-    `/api/albums/${encodeURIComponent(albumId)}/photos/${encodeURIComponent(photoId)}`,
+    `${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos/${encodeURIComponent(photoId)}`,
     { method: "DELETE" },
   )
   if (res.status === 404) throw new Error("That photo is not in this album")
