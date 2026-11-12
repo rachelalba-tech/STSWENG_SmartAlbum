@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-12 · fix/collage-api-origin · fix(api): send collage requests to `API_URL` and allow PUT, DELETE and `X-File-Name` in CORS so collages and uploads work against the deployed API.
 - 2026-11-05 · feat/album-preview · feat(album): read-only album preview before export; mark done stories (US #3, #9, #10, #22) in the backlog (Joed; US #22).
 - 2026-10-31 · main · feat(photos): add the all-photo grid and expanded arrow-key photo viewer (US #10).
 - 2026-10-31 · main · chore(make): bootstrap the API and frontend together and configure verified frontend-only deployment.
