@@ -9,10 +9,8 @@ export type Photo = {
   tags: string[]
 }
 
-// What is kept on the server: the public photo plus who owns it and which file holds the bytes.
 export type StoredPhoto = Photo & { ownerId: string; file: string }
 
-// Only real raster formats. SVG is deliberately excluded because it can carry scripts.
 export const IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",

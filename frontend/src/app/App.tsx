@@ -3,7 +3,6 @@ import "../styles/App.css"
 import "../styles/AppShell.css"
 import { fetchAlbum, fetchAlbums, fetchPhotos } from "./api.ts"
 import type { Album, Photo } from "./api.ts"
-// import { AlbumList } from "./AlbumList.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
@@ -12,6 +11,7 @@ import { PhotoGallery } from "./PhotoGallery.tsx"
 import { albumIdFromHash, pageFromHash, previewAlbumIdFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
+import { useCollages } from "./useCollages.ts"
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -22,7 +22,7 @@ function useHash() {
   }, [])
   return hash
 }
-// Your API albums only have id/title/ownerId, so fill in the rest
+
 const toManaged = (a: Album): ManagedAlbum => ({
   id: a.id,
   name: a.title,
@@ -35,6 +35,7 @@ function AlbumListRoute() {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
+  const { collages, status, reload, save, remove } = useCollages()
 
   useEffect(() => {
     let active = true
@@ -61,15 +62,25 @@ function AlbumListRoute() {
   if (error) return <p>{error}</p>
   if (!albums) return <p>Loading albums…</p>
   return (
-    <AlbumManager
-      albums={albums}
-      photos={photos}
-      onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
-      onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
-      onAlbumSelect={(id) => {
-        window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
-      }}
-    />
+    <>
+      {status === "error" && (
+        <p role="alert">
+          Couldn't load saved collages. <button onClick={reload}>Retry</button>
+        </p>
+      )}
+      <AlbumManager
+        albums={albums}
+        photos={photos}
+        collages={collages}
+        onCollageSave={save}
+        onCollageDelete={remove}
+        onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
+        onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
+        onAlbumSelect={(id) => {
+          window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
+        }}
+      />
+    </>
   )
 }
 
