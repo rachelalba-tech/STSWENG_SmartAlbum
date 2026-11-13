@@ -38,14 +38,18 @@ function parsePhoto(value: unknown): Photo | null {
   if (typeof p.src !== "string" || typeof p.albumId !== "string") return null
   return {
     id: p.id,
-    src: p.src,
-    thumbnail: typeof p.thumbnail === "string" ? p.thumbnail : p.src,
+    src: photoUrl(p.src),
+    thumbnail: photoUrl(typeof p.thumbnail === "string" ? p.thumbnail : p.src),
     title: typeof p.title === "string" ? p.title : "",
     description: typeof p.description === "string" ? p.description : "",
     date: typeof p.date === "string" ? p.date : "",
     albumId: p.albumId,
     tags: Array.isArray(p.tags) ? p.tags.filter((t): t is string => typeof t === "string") : [],
   }
+}
+
+function photoUrl(value: string): string {
+  return value.startsWith("/api/") ? API_URL + value : value
 }
 
 export async function fetchAlbums(): Promise<Album[]> {
@@ -103,4 +107,20 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string): Pr
   )
   if (res.status === 404) throw new Error("That photo is not in this album")
   if (!res.ok) throw new Error("Could not remove photo")
+}
+
+// PATCH /api/albums/:id/photos keeps the source album link and adds a second membership.
+export async function addPhotosToAlbum(albumId: string, photoIds: string[]): Promise<Photo[]> {
+  const res = await fetch(API_URL + "/api/albums/" + encodeURIComponent(albumId) + "/photos", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ photoIds }),
+  })
+  if (res.status === 404) throw new Error("Album or photo not found")
+  if (!res.ok) throw new Error("Could not add photo to album. Try again.")
+  const body: unknown = await res.json()
+  if (!Array.isArray(body)) throw new Error("Could not add photo to album. Try again.")
+  const photos = body.map(parsePhoto)
+  if (photos.some((photo) => photo === null)) throw new Error("Could not add photo to album. Try again.")
+  return photos as Photo[]
 }
