@@ -205,7 +205,7 @@ As a user, I want to view the uploaded photos both in a birds eye view and indiv
 
 As a user, I want the system to automatically identify duplicate photos so that I can remove these unnecessary copies
 
-- **Status:** Not implemented.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — owner/album-scoped SHA-256 scans, full-size review, keep choices, individual removal and confirmed explicit-ID bulk removal. Album actions preserve the library; library actions remove every owned membership of the selected physical upload. Shared memberships are not false duplicates; save failures and unreviewed new uploads are protected by tests.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** Joed and John
@@ -498,7 +498,7 @@ AC3: The photo collage is looks clear and neat even after exporting
 
 As an admin I want to be able to upload pictures, delete pictures, edit pictures, and create albums so that other people can add pictures into it
 
-- **Status:** Partial — upload exists, but admin identity/authorization, persisted album creation, photo editing and library deletion are not implemented. No assignee.
+- **Status:** Partial — upload and duplicate-library cleanup exist, but admin identity/authorization, persisted album creation and photo editing are not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -515,7 +515,7 @@ As an admin I want to be able to upload pictures, delete pictures, edit pictures
 
 As a user I want to be able to add pictures to albums, upload pictures, delete pictures, and edit pictures so that I can also decide on which photos to keep.
 
-- **Status:** Partial — uploads and album-only removal exist; authenticated standard-user permissions, photo editing and library deletion are not implemented. No assignee.
+- **Status:** Partial — uploads, recommendation-to-album additions, album-only removal and duplicate-library cleanup exist; authenticated standard-user permissions and photo editing are not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —

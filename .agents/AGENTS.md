@@ -67,8 +67,18 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   part, not all, of unassigned US #15.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
-  export, duplicate/similarity detection and dedicated low-quality flagging are not implemented.
+  export, visual-similarity detection and dedicated low-quality flagging are not implemented.
   Collage layouts exist, but album photo reordering does not.
+- **Exact duplicates (US #11):** gallery and album controls call `GET /api/photos/duplicates?albumId=`.
+  The server filters owner/album access before resolving upload paths and streaming SHA-256 hashes;
+  multiple album memberships sharing one file are one upload, not duplicates. The first upload in
+  each group is kept. Users can inspect full images, keep copies, remove one using
+  `DELETE /api/photos/duplicates/:photoId?albumId=`, or confirm a bounded JSON
+  `POST /api/photos/duplicates/delete` with explicit `{photoIds, albumId?}`. New uploads not in the
+  reviewed IDs cannot be removed accidentally. Album actions detach only that album; library actions
+  remove every owned membership of the selected upload. Metadata saves roll back on failure; cleanup
+  runs only after saving and preserves files referenced by any owner. Failed cleanup can leave
+  inaccessible orphan files; it never rolls back a committed deletion or deletes shared data.
 - **Recommendations (US #14):** the gallery can analyze original image pixels in the browser, one image
   at a time, using resolution, exposure/clipping and sharp-detail heuristics. Decode/read errors are
   retryable; no semantic ranking or guarantee of photographic quality is claimed. Users select an
@@ -83,8 +93,11 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
-  album without deleting the file. Photo upload and serving have no server tests. The server
-  test script names both files explicitly; there is no separate server type-check or build script.
+  album without deleting the file. `server/test/duplicates.test.ts` covers actual-file hashes,
+  ownership/path safety, album/library removal, shared memberships/files, stale/foreign/null-scope
+  rejection, failed saves/cleanup, and new uploads arriving after a scan. The test script names all
+  three files explicitly (21 server tests). Upload/serving are exercised by these regressions, not a
+  full image-validation suite. There is no separate server type-check or build script.
   Recommendation tests cover synthetic image quality, low resolution, decode/add retries and a
   32-photo single-decoder limit; server tests cover add ownership, persistence, idempotency and rollback.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, on Node 22.
@@ -131,7 +144,7 @@ npm run build      # tsc -b && vite build
 npm run preview    # http://localhost:4173 — preview the built frontend
 
 # server/
-npm test           # node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts
+npm test           # node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts test/duplicates.test.ts
 ```
 
 Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy). The
