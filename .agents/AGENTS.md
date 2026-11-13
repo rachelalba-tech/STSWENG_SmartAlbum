@@ -51,7 +51,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
-  and loads `server/data/albums.json` and `server/data/photos.json`, and creates
+  and loads `server/data/albums.json`, `server/data/photos.json` and `server/data/collages.json`, and creates
   `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
   `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
   `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
@@ -59,29 +59,39 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
   and leaves the file in the library (US #7, Joed). Albums contain only `id`, `title` and `ownerId`.
   There is no album create or album delete endpoint.
+- **Collages (US #21, PR #22):** the album manager selects exact-count templates, explains unsupported
+  photo counts, and supports pointer/keyboard slot swaps. Named template/order drafts are persisted
+  through `GET/POST /api/collages` and `PUT/DELETE /api/collages/:id`, ownership-checked by the server.
+  Saved collages can be reopened and edited. This covers part, not all, of unassigned US #15.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
-  layouts, export and photo analysis are not implemented.
+  export and photo analysis are not implemented. Collage layouts exist, but album photo reordering does not.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
-  hash parsing, upload selection and retry, and the gallery grid and single view. They do not call
+  hash parsing, upload selection and retry, the gallery grid/single view, and collage templates,
+  editing, saved-collage resolution and API behavior (93 tests at the 2026-11-13 audit). They do not call
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
   album without deleting the file. Photo upload and serving have no server tests. The server
   test script names both files explicitly; there is no separate server type-check or build script.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, on Node 22.
-  Frontend job: `npm ci`, `npm run lint`, `npm test`, `npm run build`. Server job: `npm test`.
-  There are no path filters or cancellation of outdated runs. Formatting and end-to-end tests are
-  not in CI. PR-title validation, automatic labeling, dependency updates and
+  Frontend job: `npm ci`, `npm run lint`, `npm test`, `npm run build` (test/build currently repeated).
+  Server job: `npm test`. Both jobs run for every PR; there are no path filters or cancellation of
+  outdated runs. Formatting and end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
   and force pushes for everyone and requires a PR with one approval from someone other than the
-  last pusher; a new push dismisses earlier approvals.
+  last pusher; a new push dismisses earlier approvals. Audited `main` had six lint errors;
+  this branch includes the existing fixes from pending PR #24 and passes lint.
 - **Formatter / end-to-end tests:** neither is configured.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
   `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
-  read-only page with no controls inside it. There are no collage layouts or export yet; export
-  (US #23) should render this same component. `frontend/test/albumPreview.test.tsx` covers it.
+  read-only page with no controls inside it. It does not render saved collage layouts, so US #22
+  remains partial against export-parity AC2. Export is not implemented. `frontend/test/albumPreview.test.tsx` covers the existing photo-list view.
+- **Pending PRs (2026-11-13):** #23 adds US #1/#2/#4/#6/#8 integration snippets, not runtime endpoints;
+  #24 fixes baseline lint; #26 fixes collage API origin and upload CORS; #27 adds basic login but
+  conflicts and removes saved-collage wiring. None is counted as merged story completion.
+  Separate-host photo URLs still need API-origin resolution.
 
 ## Commands
 
@@ -112,9 +122,10 @@ npm run preview    # http://localhost:4173 — preview the built frontend
 npm test           # node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts
 ```
 
-Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
-both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
-does not include a proxy.
+Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy). The
+current proxy targets the deployed API, **not** local port 3000; `VITE_API_URL` also selects the
+API request origin. Do not use the production proxy for tests that mutate photos or collages.
+Use an isolated local API/proxy and temporary data. The static build itself does not include a proxy.
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
 `server/`, `npm test` must pass. When a formatter is added, add it here too.
