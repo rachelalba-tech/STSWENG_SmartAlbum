@@ -14,9 +14,10 @@ interface LayoutProps {
   pickedIndex?: number | null
   onSlotClick?: (index: number) => void
   onSwap?: (from: number, to: number) => void
+  onImageStatus?: (status: "loaded" | "error", src: string) => void
 }
 
-export function CollageLayout({ template, photos, pickedIndex, onSlotClick, onSwap }: LayoutProps) {
+export function CollageLayout({ template, photos, pickedIndex, onSlotClick, onSwap, onImageStatus }: LayoutProps) {
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const editable = Boolean(onSlotClick)
 
@@ -39,7 +40,7 @@ export function CollageLayout({ template, photos, pickedIndex, onSlotClick, onSw
         if (!editable) {
           return (
             <div key={i} className={cls} style={style}>
-              {photo && <img src={photo.src} alt={photo.title} draggable={false} />}
+              {photo && <CollageImage key={`${photo.id}:${photo.src}`} photo={photo} onImageStatus={onImageStatus} />}
             </div>
           )
         }
@@ -74,11 +75,33 @@ export function CollageLayout({ template, photos, pickedIndex, onSlotClick, onSw
               setDragFrom(null)
             }}
           >
-            {photo && <img src={photo.src} alt={photo.title} draggable={false} />}
+            {photo && <CollageImage key={`${photo.id}:${photo.src}`} photo={photo} onImageStatus={onImageStatus} />}
           </div>
         )
       })}
     </div>
+  )
+}
+
+function CollageImage({
+  photo, onImageStatus,
+}: {
+  photo: Photo
+  onImageStatus?: LayoutProps["onImageStatus"]
+}) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <span className="ac-image-fallback" role="img" aria-label={`${photo.title || "Photo"} unavailable`}>Image unavailable</span>
+  return (
+    <img
+      src={photo.src}
+      alt={photo.title || "Photo"}
+      draggable={false}
+      onLoad={() => onImageStatus?.("loaded", photo.src)}
+      onError={() => {
+        setFailed(true)
+        onImageStatus?.("error", photo.src)
+      }}
+    />
   )
 }
 

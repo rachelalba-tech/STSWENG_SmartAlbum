@@ -1,5 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
 
+export function resolvePhotoUrl(src: string): string {
+  return src.startsWith("/api/uploads/") ? `${API_URL}${src}` : src
+}
+
 export type Album = {
   id: string
   title: string
@@ -36,10 +40,11 @@ function parsePhoto(value: unknown): Photo | null {
   const p = value as Record<string, unknown>
   if (typeof p.id !== "string" || p.id === "") return null
   if (typeof p.src !== "string" || typeof p.albumId !== "string") return null
+  const src = resolvePhotoUrl(p.src)
   return {
     id: p.id,
-    src: p.src,
-    thumbnail: typeof p.thumbnail === "string" ? p.thumbnail : p.src,
+    src,
+    thumbnail: resolvePhotoUrl(typeof p.thumbnail === "string" ? p.thumbnail : p.src),
     title: typeof p.title === "string" ? p.title : "",
     description: typeof p.description === "string" ? p.description : "",
     date: typeof p.date === "string" ? p.date : "",

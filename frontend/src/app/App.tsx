@@ -87,8 +87,10 @@ function AlbumListRoute() {
 function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) {
   const [album, setAlbum] = useState<Album | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [photoStatus, setPhotoStatus] = useState<"loading" | "ready" | "error">("loading")
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [photoAttempt, setPhotoAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -111,16 +113,27 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
     setPhotoError(null)
     fetchPhotos(id).then(
       (next) => {
-        if (active) setPhotos(next)
+        if (active) {
+          setPhotos(next)
+          setPhotoStatus("ready")
+        }
       },
       () => {
-        if (active) setPhotoError("Could not load photos.")
+        if (active) {
+          setPhotoStatus("error")
+          setPhotoError("Could not load photos.")
+        }
       },
     )
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, photoAttempt])
+
+  const retryPhotos = () => {
+    setPhotoStatus("loading")
+    setPhotoAttempt((attempt) => attempt + 1)
+  }
 
   async function removePhoto(photoId: string) {
     try {
@@ -145,9 +158,37 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} />}
-      {photoError && <p>{photoError}</p>}
+      {preview ? (
+        <AlbumPreviewRoute album={album} photos={photos} photoStatus={photoStatus} onRetryPhotos={retryPhotos} />
+      ) : (
+        <>
+          <AlbumPage album={album} photos={photos} onRemove={removePhoto} />
+          {photoError && <p>{photoError}</p>}
+        </>
+      )}
     </>
+  )
+}
+
+function AlbumPreviewRoute({
+  album, photos, photoStatus, onRetryPhotos,
+}: {
+  album: Album
+  photos: Photo[]
+  photoStatus: "loading" | "ready" | "error"
+  onRetryPhotos: () => void
+}) {
+  const { collages, status, reload } = useCollages()
+  return (
+    <AlbumPreview
+      album={album}
+      photos={photos}
+      collages={collages}
+      collagesStatus={status}
+      photoStatus={photoStatus}
+      onRetryCollages={reload}
+      onRetryPhotos={onRetryPhotos}
+    />
   )
 }
 

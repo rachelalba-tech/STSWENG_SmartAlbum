@@ -16,7 +16,7 @@ export function AlbumPage({
         All albums
       </a>
       <a href={"#/albums/" + encodeURIComponent(album.id) + "/preview"} style={{ display: "block", marginBottom: 16 }}>
-        Preview album
+        Preview and export album
       </a>
       <h2>{album.title}</h2>
       {photos.length === 0 ? (
