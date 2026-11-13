@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-13 · docs/backlog-completion-audit · docs(backlog): audit all 26 stories against merged code; mark US #21 complete, qualify upload/deployment gaps, correct US #22 to partial, and record pending PRs without changing assignees. No fully completed unassigned stories found.
 - 2026-11-05 · feat/album-preview · feat(album): read-only album preview before export; mark done stories (US #3, #9, #10, #22) in the backlog (Joed; US #22).
 - 2026-10-31 · main · feat(photos): add the all-photo grid and expanded arrow-key photo viewer (US #10).
 - 2026-10-31 · main · chore(make): bootstrap the API and frontend together and configure verified frontend-only deployment.
