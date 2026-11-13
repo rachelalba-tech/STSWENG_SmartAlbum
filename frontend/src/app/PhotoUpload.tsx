@@ -6,8 +6,8 @@ import { uploadPhoto } from "./api.ts"
 import type { Photo } from "./api.ts"
 
 // Limits
-export const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB per photo
-export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB per photo
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
 const CONCURRENCY = 3
 
 // Types
@@ -39,7 +39,9 @@ async function runPool<T>(items: T[], limit: number, worker: (item: T) => Promis
 
 // Component
 export function PhotoUpload({ albums, onUploaded, upload = uploadPhoto }: PhotoUploadProps) {
-  const [albumId, setAlbumId] = useState(albums[0]?.id ?? "")
+  const [chosenId, setAlbumId] = useState(albums[0]?.id ?? "")
+  // Fall back to the first album if the chosen one is gone or nothing was chosen yet
+  const albumId = albums.some((a) => a.id === chosenId) ? chosenId : (albums[0]?.id ?? "")
   const [items, setItems] = useState<Item[]>([])
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -57,11 +59,6 @@ export function PhotoUpload({ albums, onUploaded, upload = uploadPhoto }: PhotoU
       all.clear()
     }
   }, [])
-
-  // If the selected album disappears/nothing was selected yet, fall back to the first album 
-  useEffect(() => {
-    if (!albums.some((a) => a.id === albumId)) setAlbumId(albums[0]?.id ?? "")
-  }, [albums, albumId])
 
   const patch = (key: string, change: Partial<Item>) => {
     if (!mounted.current) return
