@@ -1,11 +1,16 @@
 # PRODUCT BACKLOG
 
+Status audit: 2026-11-13, merged `main` at `af88269`. Pending PRs are not counted as done.
+“Demo identity” means the fixed `demo-user`, not authenticated accounts. Assignees are unchanged.
+No fully completed story is unassigned; US #15's collage-slot dragging is only part of that story.
+
 ## Photo Album Management
 
 ### US #1
 
 As a user, I want to create a new photo album so that I can organize and save photos from a particular event
 
+- **Status:** Partial — creation UI updates local state only; no persisted create endpoint. PR #23 contains integration snippets, not runtime implementation.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt, John
@@ -23,6 +28,7 @@ As a user, I want to create a new photo album so that I can organize and save ph
 
 As a user, I want to delete photo albums that I no longer need so that I can only keep the photo albums I want
 
+- **Status:** Not implemented — delete button has no handler and no API endpoint. PR #23 contains integration snippets only.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** John
@@ -39,7 +45,7 @@ As a user, I want to delete photo albums that I no longer need so that I can onl
 
 As a user, I want to view all my photo albums in one place so that I can easily find, open, and edit them.
 
-- **Status:** Done (PR #7; demo user)
+- **Status:** Done (PR #7; demo identity) — owned albums are listed and openable; account authentication is tracked separately in US #26.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Joed
@@ -57,6 +63,7 @@ As a user, I want to view all my photo albums in one place so that I can easily 
 
 As a user I want to edit the order or layout of the pictures in the albums so that I can create a visual story using the pictures
 
+- **Status:** Partial — collage slot order is saved, but album photo reordering is not implemented. PR #23's album-order code is integration snippets only.
 - **Estimate or Story Points:** 3
 - **Priority:** High
 - **Taken by:** John
@@ -83,6 +90,7 @@ AC2: Button labels and edit view are easy to understand and follow
 
 As a user, I want to rename album sections so that their titles describe the pictures they contain.
 
+- **Status:** Partial — title/description form changes local state only; no persisted album update endpoint.
 - **Estimate or Story Points:** 3
 - **Priority:** Middle
 - **Taken by:** Alwayne
@@ -105,6 +113,7 @@ AC1: Any changes made to the album title and description is saved
 
 As a user I want to add photos to an album so that I can organize my photos into dedicated albums
 
+- **Status:** Partial — new uploads target an album; adding existing library photos is not implemented. PR #23 contains integration snippets only.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** John
@@ -121,7 +130,7 @@ As a user I want to add photos to an album so that I can organize my photos into
 
 As a user, I want to remove photos from an album so that I can revise its content without permanently deleting the photos from my library.
 
-- **Status:** Done (PR #17, Joed)
+- **Status:** Done (PR #17, Joed; demo identity) — album removal preserves the library record and file, covered by the server test.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Joed
@@ -138,6 +147,7 @@ As a user, I want to remove photos from an album so that I can revise its conten
 
 As a user, I want to add headlines and descriptions to the albums so that it can give the user an idea of what is happening in the pictures
 
+- **Status:** Partial — local title/description UI exists but changes are not persisted. PR #23 contains integration snippets only.
 - **Estimate or Story Points:** 3
 - **Priority:** Low
 - **Taken by:** John
@@ -159,7 +169,7 @@ AC2: It is easy to understand where to write the album headlines and description
 
 As a user, I want to upload multiple photos at once so that I can quickly add pictures to an album.
 
-- **Status:** Done (PR #14, Natt)
+- **Status:** Partial (PR #14, Natt) — multi-upload/retry works through a same-origin proxy; cross-origin uploads are blocked by the missing CORS `X-File-Name` allowance, addressed in pending PR #26. Uploaded image URLs also need API-origin resolution on separate hosts.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt
@@ -176,7 +186,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
-- **Status:** Done (PR #15, Alwayne)
+- **Status:** Done (PR #15, Alwayne; demo identity/same-origin API) — grid, single view and keyboard navigation are tested. Separate-host image URL resolution remains an integration gap.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
@@ -194,6 +204,7 @@ As a user, I want to view the uploaded photos both in a birds eye view and indiv
 
 As a user, I want the system to automatically identify duplicate photos so that I can remove these unnecessary copies
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** Joed and John
@@ -221,6 +232,7 @@ AC3: If the duplicates are deleted from the album then they can no longer be fou
 
 As a user, I want the system to identify visually similar photos so that I can choose the best image from multiple shots of the same subject or moment
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** Alwayne and Natt
@@ -248,6 +260,7 @@ AC4: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to flag low-quality photos so that I will know not to include these photos in the curated albums
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** John and Alwayne
@@ -276,6 +289,7 @@ AC3: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to recommend the best photos from the event so that I can create a well curated album without having to manually check every image
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** Natt and Joed
@@ -300,6 +314,7 @@ AC2: If the user adds a photo to an album from the curated list made by the syst
 
 As a user, I want to drag and drop photos onto albums so that I can easily design my album
 
+- **Status:** Partial — collage photos can be dragged to swap saved positions (PR #22); dragging library photos onto album pages is not implemented. No assignee; not a fully completed story.
 - **Estimate or Story Points:** —
 - **Priority:** Low
 - **Taken by:** —
@@ -316,6 +331,7 @@ As a user, I want to drag and drop photos onto albums so that I can easily desig
 
 As a user, I want to crop photos within album pages so that I do not need to use a separate app to make edits
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -332,6 +348,7 @@ As a user, I want to crop photos within album pages so that I do not need to use
 
 As a user I want to rotate photos within the application so that I do not need to use a separate app to make edits
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -348,6 +365,7 @@ As a user I want to rotate photos within the application so that I do not need t
 
 As a user, I want to add captions to individual photos so that the users can get specific details on what the picture is trying to show
 
+- **Status:** Not implemented — a description data field exists, but there is no caption editing/display workflow.
 - **Estimate or Story Points:** —
 - **Priority:** Low
 - **Taken by:** —
@@ -364,6 +382,7 @@ As a user, I want to add captions to individual photos so that the users can get
 
 As a user, I want to adjust the color grading of individual photos using the system so that I can make edits and improve the look of the pictures without needing another application
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Low
 - **Taken by:** —
@@ -380,6 +399,7 @@ As a user, I want to adjust the color grading of individual photos using the sys
 
 As a user, I want to apply consistent color grading across my entire album so that all photos have a consistent look
 
+- **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Low
 - **Taken by:** —
@@ -396,6 +416,7 @@ As a user, I want to apply consistent color grading across my entire album so th
 
 As a user, I want the system to recommend editorial page layouts based on my selected photos so that I can create professional-looking pages quickly
 
+- **Status:** Partial (PR #22, Natt; demo identity/same-origin API) — template selection, count guidance, swaps and saving exist, but `two-over-one` spans beyond its grid and `mosaic` has overlapping cells that can obscure photos. Geometry needs correction before all layouts are reliable; separate-host API routing is addressed in pending PR #26.
 - **Estimate or Story Points:** 5
 - **Priority:** High
 - **Taken by:** Natt
@@ -433,7 +454,7 @@ AC4: It is easy to understand where to trigger this function and the process to 
 
 As a user, I want to preview my complete album collage before exporting it so that I can verify its pictures and layout
 
-- **Status:** Done (Joed; read-only preview of the album's photos — no collage layouts or export yet)
+- **Status:** Partial (Joed) — preview is read-only, but shows a photo list rather than the saved collage template/order; export parity (AC2) is not yet implemented.
 - **Estimate or Story Points:** 3
 - **Priority:** High
 - **Taken by:** Joed
@@ -453,6 +474,7 @@ AC2: The preview stage will show an accurate view of what the final product will
 
 As a user, I want to export my completed photo album so that I can save it on my device
 
+- **Status:** Not implemented — no export control or downloadable collage file.
 - **Estimate or Story Points:** 4
 - **Priority:** High
 - **Taken by:** Joed
@@ -475,6 +497,7 @@ AC3: The photo collage is looks clear and neat even after exporting
 
 As an admin I want to be able to upload pictures, delete pictures, edit pictures, and create albums so that other people can add pictures into it
 
+- **Status:** Partial — upload exists, but admin identity/authorization, persisted album creation, photo editing and library deletion are not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -491,6 +514,7 @@ As an admin I want to be able to upload pictures, delete pictures, edit pictures
 
 As a user I want to be able to add pictures to albums, upload pictures, delete pictures, and edit pictures so that I can also decide on which photos to keep.
 
+- **Status:** Partial — uploads and album-only removal exist; authenticated standard-user permissions, photo editing and library deletion are not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -507,6 +531,7 @@ As a user I want to be able to add pictures to albums, upload pictures, delete p
 
 As a user and admin I want to be able to log in to my account using my username and password so that I can see the event pictures
 
+- **Status:** Not implemented on `main` — PR #27 contains a basic login implementation but is pending/conflicting; it is not evidence of completed account authentication.
 - **Estimate or Story Points:** 4
 - **Priority:** High
 - **Taken by:** Alwayne

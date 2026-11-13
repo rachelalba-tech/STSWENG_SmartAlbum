@@ -9,7 +9,6 @@ export function useCollages() {
 
   useEffect(() => {
     const controller = new AbortController()
-    setStatus("loading")
     listCollages(controller.signal)
       .then((list) => {
         setCollages(list)
@@ -21,7 +20,10 @@ export function useCollages() {
     return () => controller.abort()
   }, [attempt])
 
-  const reload = useCallback(() => setAttempt((n) => n + 1), [])
+  const reload = useCallback(() => {
+    setStatus("loading")
+    setAttempt((n) => n + 1)
+  }, [])
 
   const save = useCallback(async (draft: CollageDraft): Promise<SavedCollage> => {
     const saved = draft.id ? await updateCollage(draft.id, draft) : await createCollage(draft)

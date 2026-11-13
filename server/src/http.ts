@@ -423,7 +423,7 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
     
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type"
+      "Content-Type, X-File-Name"
     )
     
     if(req.method === "OPTIONS") {
