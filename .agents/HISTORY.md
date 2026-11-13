@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-13 · feat/joed-collage-export · feat(album): preview saved collage layouts and download matching PNG/JPEG images with geometry, transparency, missing-photo and image-failure safety; correct invalid template cells without changing saved IDs/order (Joed; US #22/#23; browser QA pending).
 - 2026-11-13 · feat/joed-duplicate-photos · feat(photos): review exact duplicates and remove explicit selections with ownership, membership, persistence and shared-file safety; compose with recommendation memberships (Joed; US #11; browser QA pending).
 - 2026-11-13 · feat/joed-best-photos · feat(photos): recommend clear photos with bounded pixel analysis and add them to existing owned albums without moving source memberships; reuse pending lint/CORS fixes and resolve API image URLs (Joed; US #14; browser QA pending).
 - 2026-11-13 · docs/backlog-completion-audit · docs(backlog): audit all 26 stories against merged code; record partial US #21 layout geometry and upload/deployment gaps, correct US #22 to partial, and record pending PRs without changing assignees. No fully completed unassigned stories found.

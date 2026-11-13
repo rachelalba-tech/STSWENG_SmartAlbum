@@ -62,12 +62,13 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 - **Collages (US #21, PR #22):** the album manager selects exact-count templates, explains unsupported
   photo counts, and supports pointer/keyboard slot swaps. Named template/order drafts are persisted
   through `GET/POST /api/collages` and `PUT/DELETE /api/collages/:id`, ownership-checked by the server.
-  Saved collages can be reopened and edited. US #21 remains partial: `two-over-one` overflows its
-  declared grid and `mosaic` overlaps cells, so some layouts can obscure photos. Slot dragging covers
-  part, not all, of unassigned US #15.
+  Saved collages can be reopened and edited. This branch corrects invalid bounds/overlaps in
+  `two-over-one`, `bottom-left-feature` and `mosaic`, preserving template IDs, slot counts and saved
+  photo order; all template cells have bounds/non-overlap tests. Slot dragging covers part, not all,
+  of unassigned US #15.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
-  export, visual-similarity detection and dedicated low-quality flagging are not implemented.
+  visual-similarity detection and dedicated low-quality flagging are not implemented.
   Collage layouts exist, but album photo reordering does not.
 - **Exact duplicates (US #11):** gallery and album controls call `GET /api/photos/duplicates?albumId=`.
   The server filters owner/album access before resolving upload paths and streaming SHA-256 hashes;
@@ -89,7 +90,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
   hash parsing, upload selection and retry, the gallery grid/single view, and collage templates,
-  editing, saved-collage resolution and API behavior (93 tests at the 2026-11-13 audit). They do not call
+  editing, saved-collage resolution, API behavior, duplicate review, quality recommendations and export
+  (123 tests in 14 files on this branch). They do not call
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
@@ -110,13 +112,21 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   this branch includes the existing fixes from pending PR #24 and passes lint.
 - **Formatter / end-to-end tests:** neither is configured.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
-  `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
-  read-only page with no controls inside it. It does not render saved collage layouts, so US #22
-  remains partial against export-parity AC2. Export is not implemented. `frontend/test/albumPreview.test.tsx` covers the existing photo-list view.
+  `src/app/AlbumPreview.tsx`: all saved collage templates in their saved photo order, with no editing
+  or dragging inside each stage. Missing photos, failed image loads and unavailable layouts block
+  export and show errors/retry controls; photo/collage API loading and failure are distinct states.
+  Albums without saved collages retain a clearly labelled photo-list fallback with no export button.
+- **Collage export (US #23):** preview controls download PNG or JPEG, rendered at 2400×2400 by
+  `collageExport.ts`. After source images load, stage/slot geometry is captured together, retaining
+  center-cover crops, borders/gaps and computed slot backgrounds under transparent photos. Exports
+  reject incorrect browser MIME fallbacks, CORS taint, image errors and 15-second image-load timeouts.
+  Unit tests cover these cases, preview guards, format controls, links and sanitized download names.
 - **Pending PRs (2026-11-13):** #23 adds US #1/#2/#4/#6/#8 integration snippets, not runtime endpoints;
   #24 fixes baseline lint; #26 fixes collage API origin and upload CORS; #27 adds basic login but
   conflicts and removes saved-collage wiring. None is counted as merged story completion.
   This branch includes #24/#26's existing commits and resolves separate-host uploaded photo URLs.
+  It also stacks on recommendation PR #29 and duplicate-cleanup PR #30; review/merge prerequisites
+  before the dependent feature PRs. No PR has been merged by this work.
 
 ## Commands
 

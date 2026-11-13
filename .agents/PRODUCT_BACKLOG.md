@@ -417,7 +417,7 @@ As a user, I want to apply consistent color grading across my entire album so th
 
 As a user, I want the system to recommend editorial page layouts based on my selected photos so that I can create professional-looking pages quickly
 
-- **Status:** Partial (PR #22, Natt; demo identity/same-origin API) — template selection, count guidance, swaps and saving exist, but `two-over-one` spans beyond its grid and `mosaic` has overlapping cells that can obscure photos. Geometry needs correction before all layouts are reliable; separate-host API routing is addressed in pending PR #26.
+- **Status:** Implemented (PR #22, Natt; this branch corrects invalid/overlapping template cells while preserving saved IDs and slot order, and includes pending PR #26 API routing; awaiting complete browser QA/merge) — exact-count selection, unsupported-count guidance, swaps and saving are tested.
 - **Estimate or Story Points:** 5
 - **Priority:** High
 - **Taken by:** Natt
@@ -455,7 +455,7 @@ AC4: It is easy to understand where to trigger this function and the process to 
 
 As a user, I want to preview my complete album collage before exporting it so that I can verify its pictures and layout
 
-- **Status:** Partial (Joed) — preview is read-only, but shows a photo list rather than the saved collage template/order; export parity (AC2) is not yet implemented.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — preview renders saved templates and photo order without editing controls in the collage stage. Loading, missing/failed photos and unavailable layouts cannot be exported; the photo-list fallback is explicitly not an exportable collage.
 - **Estimate or Story Points:** 3
 - **Priority:** High
 - **Taken by:** Joed
@@ -475,7 +475,7 @@ AC2: The preview stage will show an accurate view of what the final product will
 
 As a user, I want to export my completed photo album so that I can save it on my device
 
-- **Status:** Not implemented — no export control or downloadable collage file.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — each saved collage can download as a 2400×2400 PNG or JPEG. Canvas rendering follows a consistent preview geometry snapshot, crop and transparent-photo background; MIME, CORS, timeout and download failures are handled and unit-tested.
 - **Estimate or Story Points:** 4
 - **Priority:** High
 - **Taken by:** Joed
