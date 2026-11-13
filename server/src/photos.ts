@@ -22,9 +22,15 @@ export const IMAGE_TYPES: Record<string, string> = {
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024
 
 export function listPhotosForUser(photos: StoredPhoto[], ownerId: string, albumId?: string): Photo[] {
-  return photos
-    .filter((p) => p.ownerId === ownerId && (albumId === undefined || p.albumId === albumId))
-    .map(toPublic)
+  const files = new Set<string>()
+  const result: Photo[] = []
+  for (const photo of photos) {
+    if (photo.ownerId !== ownerId || (albumId !== undefined && photo.albumId !== albumId)) continue
+    if (albumId === undefined && files.has(photo.file)) continue
+    files.add(photo.file)
+    result.push(toPublic(photo))
+  }
+  return result
 }
 
 // Drop the album link only. An empty albumId means the photo stays in the library.

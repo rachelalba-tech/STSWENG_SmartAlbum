@@ -122,7 +122,7 @@ test("album duplicate removal detaches; library removal deletes metadata everywh
     const album = await (await fetch(`${server.base}/api/photos?albumId=opening`)).json()
     assert.deepEqual(album.map((p: { id: string }) => p.id), ["first"])
     const library = await (await fetch(`${server.base}/api/photos`)).json()
-    assert.deepEqual(library.map((p: { id: string }) => p.id), ["first", "copy", "other-copy", "shared-copy"])
+    assert.deepEqual(library.map((p: { id: string }) => p.id), ["first", "copy", "other-copy"])
     assert.equal((await fetch(`${server.base}/api/uploads/copy.jpg`)).status, 200)
     assert.equal(JSON.parse(readFileSync(server.photosFile, "utf8")).find((p: StoredPhoto) => p.id === "copy").albumId, "")
 

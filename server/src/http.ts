@@ -339,6 +339,66 @@ function handleDetach(
   res.end()
 }
 
+async function handleAddPhotos(
+  req: IncomingMessage,
+  res: ServerResponse,
+  albums: Album[],
+  ownerId: string,
+  albumId: string,
+  storage: PhotoStorage | undefined,
+) {
+  if (!storage) {
+    req.resume()
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  if (!openAlbum(albums, ownerId, albumId)) {
+    req.resume()
+    send(res, 404, { error: "album not found" })
+    return
+  }
+
+  const body = await readJson(req, res)
+  if (body === undefined) return
+  const photoIds = typeof body === "object" && body !== null ? (body as { photoIds?: unknown }).photoIds : undefined
+  if (!Array.isArray(photoIds) || !photoIds.every((id) => typeof id === "string" && id !== "") ||
+    new Set(photoIds).size !== photoIds.length) {
+    send(res, 400, { error: "photoIds must be a unique array of strings" })
+    return
+  }
+
+  const selected = photoIds
+    .map((id) => storage.photos.find((photo) => photo.id === id && photo.ownerId === ownerId))
+    .filter((photo): photo is StoredPhoto => photo !== undefined)
+  if (selected.length !== photoIds.length) {
+    send(res, 404, { error: "one or more photos were not found" })
+    return
+  }
+
+  const filesInAlbum = new Set(storage.photos
+    .filter((photo) => photo.ownerId === ownerId && photo.albumId === albumId)
+    .map((photo) => photo.file))
+  const additions: StoredPhoto[] = []
+  for (const source of selected) {
+    if (!filesInAlbum.has(source.file)) {
+      filesInAlbum.add(source.file)
+      additions.push({ ...source, id: randomUUID(), albumId })
+    }
+  }
+
+  if (additions.length > 0) {
+    const originalLength = storage.photos.length
+    storage.photos.push(...additions)
+    try {
+      storage.save(storage.photos)
+    } catch (err) {
+      storage.photos.splice(originalLength)
+      throw err
+    }
+  }
+  send(res, 200, listPhotosForUser(storage.photos, ownerId, albumId))
+}
+
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
   const photo = storage?.photos.find((p) => p.file === file && p.ownerId === ownerId)
   if (!storage || !photo) {
@@ -365,12 +425,12 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
 
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
+      "GET, POST, PATCH, PUT, DELETE, OPTIONS"
     )
     
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type"
+      "Content-Type, X-File-Name"
     )
     
     if(req.method === "OPTIONS") {
@@ -386,6 +446,16 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
     }
 
     const upload = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos$/)
+    if (upload && req.method === "PATCH") {
+      const albumId = safeDecode(upload[1])
+      if (albumId === null) {
+        req.resume()
+        send(res, 400, { error: "bad album id" })
+        return
+      }
+      handleAddPhotos(req, res, albums, ownerId, albumId, photoStorage).catch(fail)
+      return
+    }
     if (upload && req.method === "POST") {
       const albumId = safeDecode(upload[1])
       if (albumId === null) {

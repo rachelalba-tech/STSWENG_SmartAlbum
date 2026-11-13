@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
+export const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
 
 export type Album = {
   id: string
@@ -159,4 +159,20 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string): Pr
   )
   if (res.status === 404) throw new Error("That photo is not in this album")
   if (!res.ok) throw new Error("Could not remove photo")
+}
+
+// PATCH /api/albums/:id/photos keeps the source album link and adds a second membership.
+export async function addPhotosToAlbum(albumId: string, photoIds: string[]): Promise<Photo[]> {
+  const res = await fetch(API_URL + "/api/albums/" + encodeURIComponent(albumId) + "/photos", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ photoIds }),
+  })
+  if (res.status === 404) throw new Error("Album or photo not found")
+  if (!res.ok) throw new Error("Could not add photo to album. Try again.")
+  const body: unknown = await res.json()
+  if (!Array.isArray(body)) throw new Error("Could not add photo to album. Try again.")
+  const photos = body.map(parsePhoto)
+  if (photos.some((photo) => photo === null)) throw new Error("Could not add photo to album. Try again.")
+  return photos as Photo[]
 }
