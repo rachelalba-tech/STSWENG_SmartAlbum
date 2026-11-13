@@ -67,7 +67,15 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   part, not all, of unassigned US #15.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
-  export and photo analysis are not implemented. Collage layouts exist, but album photo reordering does not.
+  export, duplicate/similarity detection and dedicated low-quality flagging are not implemented.
+  Collage layouts exist, but album photo reordering does not.
+- **Recommendations (US #14):** the gallery can analyze original image pixels in the browser, one image
+  at a time, using resolution, exposure/clipping and sharp-detail heuristics. Decode/read errors are
+  retryable; no semantic ranking or guarantee of photographic quality is claimed. Users select an
+  existing album and add a recommendation through `PATCH /api/albums/:id/photos` with `{photoIds}`.
+  The server validates owner/album/photo access, adds idempotent records referencing immutable files
+  without moving source memberships, and rolls back failed saves. The library lists each owned file
+  once; album queries retain their own membership IDs. Uploaded image URLs resolve against `API_URL`.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
   hash parsing, upload selection and retry, the gallery grid/single view, and collage templates,
@@ -77,6 +85,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
   album without deleting the file. Photo upload and serving have no server tests. The server
   test script names both files explicitly; there is no separate server type-check or build script.
+  Recommendation tests cover synthetic image quality, low resolution, decode/add retries and a
+  32-photo single-decoder limit; server tests cover add ownership, persistence, idempotency and rollback.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, on Node 22.
   Frontend job: `npm ci`, `npm run lint`, `npm test`, `npm run build` (test/build currently repeated).
   Server job: `npm test`. Both jobs run for every PR; there are no path filters or cancellation of
@@ -93,7 +103,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 - **Pending PRs (2026-11-13):** #23 adds US #1/#2/#4/#6/#8 integration snippets, not runtime endpoints;
   #24 fixes baseline lint; #26 fixes collage API origin and upload CORS; #27 adds basic login but
   conflicts and removes saved-collage wiring. None is counted as merged story completion.
-  Separate-host photo URLs still need API-origin resolution.
+  This branch includes #24/#26's existing commits and resolves separate-host uploaded photo URLs.
 
 ## Commands
 

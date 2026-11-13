@@ -1,6 +1,7 @@
 # PRODUCT BACKLOG
 
 Status audit: 2026-11-13, merged `main` at `af88269`. Pending PRs are not counted as done.
+Branch implementation updates below are explicitly labelled; they are not yet merged into `main`.
 “Demo identity” means the fixed `demo-user`, not authenticated accounts. Assignees are unchanged.
 No fully completed story is unassigned; US #15's collage-slot dragging is only part of that story.
 
@@ -113,7 +114,7 @@ AC1: Any changes made to the album title and description is saved
 
 As a user I want to add photos to an album so that I can organize my photos into dedicated albums
 
-- **Status:** Partial — new uploads target an album; adding existing library photos is not implemented. PR #23 contains integration snippets only.
+- **Status:** Partial — new uploads target an album; this branch adds existing recommended photos through a persisted, ownership-checked API while preserving source albums. A general library picker is not implemented; PR #23 contains other integration snippets only.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** John
@@ -169,7 +170,7 @@ AC2: It is easy to understand where to write the album headlines and description
 
 As a user, I want to upload multiple photos at once so that I can quickly add pictures to an album.
 
-- **Status:** Partial (PR #14, Natt) — multi-upload/retry works through a same-origin proxy; cross-origin uploads are blocked by the missing CORS `X-File-Name` allowance, addressed in pending PR #26. Uploaded image URLs also need API-origin resolution on separate hosts.
+- **Status:** Implemented (PR #14, Natt; this branch includes pending PR #26's upload CORS fix and API-origin image resolution; awaiting browser QA/merge) — multi-upload and retry retain the original ownership and size/type checks.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt
@@ -186,7 +187,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
-- **Status:** Done (PR #15, Alwayne; demo identity/same-origin API) — grid, single view and keyboard navigation are tested. Separate-host image URL resolution remains an integration gap.
+- **Status:** Done (PR #15, Alwayne; demo identity) — grid, single view and keyboard navigation are tested; this branch also resolves uploaded image URLs against the API origin.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
@@ -260,7 +261,7 @@ AC4: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to flag low-quality photos so that I will know not to include these photos in the curated albums
 
-- **Status:** Not implemented.
+- **Status:** Partial (this branch) — recommendation scoring measures resolution, exposure and detail, but there is no dedicated low-quality flag/review/deletion workflow.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** John and Alwayne
@@ -289,7 +290,7 @@ AC3: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to recommend the best photos from the event so that I can create a well curated album without having to manually check every image
 
-- **Status:** Not implemented.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — pixel-based quality heuristics recommend clear photos; selections can be added to any existing owned album without moving them out of the source album. Scans, retries, ownership, idempotent membership persistence and bounded decoding are tested; semantic event ranking is not claimed.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** Natt and Joed
