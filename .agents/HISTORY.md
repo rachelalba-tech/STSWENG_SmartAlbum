@@ -3,7 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
-- 2026-11-13 · docs/backlog-completion-audit · docs(backlog): audit all 26 stories against merged code; mark US #21 complete, qualify upload/deployment gaps, correct US #22 to partial, and record pending PRs without changing assignees. No fully completed unassigned stories found.
+- 2026-11-13 · docs/backlog-completion-audit · docs(backlog): audit all 26 stories against merged code; record partial US #21 layout geometry and upload/deployment gaps, correct US #22 to partial, and record pending PRs without changing assignees. No fully completed unassigned stories found.
 - 2026-11-12 · fix/frontend-lint · fix(frontend): clear the four lint errors so the new CI lint step passes on `main`.
 - 2026-11-12 · fix/collage-api-origin · fix(api): send collage requests to `API_URL` and allow PUT, DELETE and `X-File-Name` in CORS so collages and uploads work against the deployed API.
 - 2026-11-05 · feat/album-preview · feat(album): read-only album preview before export; mark done stories (US #3, #9, #10, #22) in the backlog (Joed; US #22).

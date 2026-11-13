@@ -416,7 +416,7 @@ As a user, I want to apply consistent color grading across my entire album so th
 
 As a user, I want the system to recommend editorial page layouts based on my selected photos so that I can create professional-looking pages quickly
 
-- **Status:** Done (PR #22, Natt; demo identity/same-origin API) — album photos populate exact-count templates, unsupported counts show guidance, and positions can be changed. Separate-host saved-collage API routing is addressed in pending PR #26.
+- **Status:** Partial (PR #22, Natt; demo identity/same-origin API) — template selection, count guidance, swaps and saving exist, but `two-over-one` spans beyond its grid and `mosaic` has overlapping cells that can obscure photos. Geometry needs correction before all layouts are reliable; separate-host API routing is addressed in pending PR #26.
 - **Estimate or Story Points:** 5
 - **Priority:** High
 - **Taken by:** Natt

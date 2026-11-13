@@ -62,7 +62,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 - **Collages (US #21, PR #22):** the album manager selects exact-count templates, explains unsupported
   photo counts, and supports pointer/keyboard slot swaps. Named template/order drafts are persisted
   through `GET/POST /api/collages` and `PUT/DELETE /api/collages/:id`, ownership-checked by the server.
-  Saved collages can be reopened and edited. This covers part, not all, of unassigned US #15.
+  Saved collages can be reopened and edited. US #21 remains partial: `two-over-one` overflows its
+  declared grid and `mosaic` overlaps cells, so some layouts can obscure photos. Slot dragging covers
+  part, not all, of unassigned US #15.
 - **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
   `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
   export and photo analysis are not implemented. Collage layouts exist, but album photo reordering does not.
