@@ -8,6 +8,7 @@ import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
 import { PhotoUpload } from "./PhotoUpload.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
+import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 import { albumIdFromHash, pageFromHash, previewAlbumIdFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
@@ -105,6 +106,12 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
     }
   }, [id])
 
+  async function reloadPhotos() {
+    const next = await fetchPhotos(id)
+    setPhotos(next)
+    setPhotoError(null)
+  }
+
   useEffect(() => {
     let active = true
     setPhotos([])
@@ -145,7 +152,7 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} />}
+      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} onPhotosChanged={reloadPhotos} />}
       {photoError && <p>{photoError}</p>}
     </>
   )
@@ -217,9 +224,15 @@ function PhotosRoute() {
     }
   }, [])
 
+  async function reloadPhotos() {
+    const next = await fetchPhotos()
+    setPhotos(next)
+    setError(null)
+  }
+
   if (error) return <p>{error}</p>
   if (!photos) return <p>Loading photos…</p>
-  return <PhotoGallery photos={photos} />
+  return <><DuplicatePhotos onPhotosChanged={reloadPhotos} /><PhotoGallery photos={photos} /></>
 }
 
 export default function App() {

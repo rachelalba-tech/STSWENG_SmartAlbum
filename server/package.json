@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "start": "node --experimental-strip-types src/server.ts",
-    "test": "node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts"
+    "test": "node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts test/duplicates.test.ts"
   }
 }
