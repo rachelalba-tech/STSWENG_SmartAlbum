@@ -1,7 +1,7 @@
 import { isSavedCollage } from "./collageStore"
 import type { CollageDraft, SavedCollage } from "./collageStore"
 
-const BASE = "/api/collages"
+const BASE = `${import.meta.env.VITE_API_URL}/api/collages`
 
 export class ApiError extends Error {
   readonly status: number
