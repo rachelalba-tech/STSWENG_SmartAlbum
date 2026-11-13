@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
+export const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
 
 export function resolvePhotoUrl(src: string): string {
   return src.startsWith("/api/uploads/") ? `${API_URL}${src}` : src
@@ -21,6 +21,8 @@ export type Photo = {
   tags: string[]
 }
 
+export type DuplicateGroup = { keeper: Photo; duplicates: Photo[] }
+
 //console.log("API URL:", import.meta.env.VITE_API_URL);
 
 function isAlbum(value: unknown): value is Album {
@@ -34,7 +36,7 @@ function isAlbum(value: unknown): value is Album {
   )
 }
 
-// Required: id, src and albumId  
+// Required: id, src and albumId
 function parsePhoto(value: unknown): Photo | null {
   if (typeof value !== "object" || value === null) return null
   const p = value as Record<string, unknown>
@@ -44,7 +46,7 @@ function parsePhoto(value: unknown): Photo | null {
   return {
     id: p.id,
     src,
-    thumbnail: resolvePhotoUrl(typeof p.thumbnail === "string" ? p.thumbnail : p.src),
+    thumbnail: typeof p.thumbnail === "string" ? resolvePhotoUrl(p.thumbnail) : src,
     title: typeof p.title === "string" ? p.title : "",
     description: typeof p.description === "string" ? p.description : "",
     date: typeof p.date === "string" ? p.date : "",
@@ -83,6 +85,55 @@ export async function fetchPhotos(albumId?: string): Promise<Photo[]> {
   return photos as Photo[]
 }
 
+function parseDuplicateGroup(value: unknown): DuplicateGroup | null {
+  if (typeof value !== "object" || value === null) return null
+  const group = value as Record<string, unknown>
+  const keeper = parsePhoto(group.keeper)
+  if (!keeper || !Array.isArray(group.duplicates) || group.duplicates.length === 0) return null
+  const duplicates = group.duplicates.map(parsePhoto)
+  if (duplicates.some((photo) => photo === null)) return null
+  return { keeper, duplicates: duplicates as Photo[] }
+}
+
+async function duplicateError(res: Response): Promise<Error> {
+  let message = "Could not update duplicates"
+  try {
+    const body: unknown = await res.json()
+    if (typeof body === "object" && body !== null && typeof (body as { error?: unknown }).error === "string") {
+      message = (body as { error: string }).error
+    }
+  } catch {
+    // Some server errors have no JSON body.
+  }
+  return new Error(message)
+}
+
+export async function fetchDuplicateGroups(albumId?: string): Promise<DuplicateGroup[]> {
+  const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
+  const res = await fetch(`${API_URL}/api/photos/duplicates${query}`)
+  if (!res.ok) throw await duplicateError(res)
+  const body: unknown = await res.json()
+  if (!Array.isArray(body)) throw new Error("Unexpected duplicate response")
+  const groups = body.map(parseDuplicateGroup)
+  if (groups.some((group) => group === null)) throw new Error("Unexpected duplicate response")
+  return groups as DuplicateGroup[]
+}
+
+export async function removeDuplicatePhoto(photoId: string, albumId?: string): Promise<void> {
+  const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
+  const res = await fetch(`${API_URL}/api/photos/duplicates/${encodeURIComponent(photoId)}${query}`, { method: "DELETE" })
+  if (!res.ok) throw await duplicateError(res)
+}
+
+export async function removeDuplicatePhotos(albumId: string | undefined, photoIds: string[]): Promise<void> {
+  const res = await fetch(`${API_URL}/api/photos/duplicates/delete`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...(albumId ? { albumId } : {}), photoIds }),
+  })
+  if (!res.ok) throw await duplicateError(res)
+}
+
 // POST /api/albums/:id/photos
 // Errors for image type, photo size, and failed upload 
 export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
@@ -108,4 +159,20 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string): Pr
   )
   if (res.status === 404) throw new Error("That photo is not in this album")
   if (!res.ok) throw new Error("Could not remove photo")
+}
+
+// PATCH /api/albums/:id/photos keeps the source album link and adds a second membership.
+export async function addPhotosToAlbum(albumId: string, photoIds: string[]): Promise<Photo[]> {
+  const res = await fetch(API_URL + "/api/albums/" + encodeURIComponent(albumId) + "/photos", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ photoIds }),
+  })
+  if (res.status === 404) throw new Error("Album or photo not found")
+  if (!res.ok) throw new Error("Could not add photo to album. Try again.")
+  const body: unknown = await res.json()
+  if (!Array.isArray(body)) throw new Error("Could not add photo to album. Try again.")
+  const photos = body.map(parsePhoto)
+  if (photos.some((photo) => photo === null)) throw new Error("Could not add photo to album. Try again.")
+  return photos as Photo[]
 }

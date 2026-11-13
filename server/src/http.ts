@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto"
+import { unlinkSync } from "node:fs"
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
 import { readFile, unlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { listAlbumsForUser, openAlbum, type Album } from "./albums.ts"
+import { findDuplicatePhotos, resolveUploadFile } from "./duplicates.ts"
 import {
   MAX_COLLAGE_BODY_BYTES,
   listCollagesForUser,
@@ -40,6 +42,7 @@ type Options = {
 }
 
 const encoder = new TextEncoder()
+const MAX_DUPLICATE_ACTION_BODY_BYTES = 64 * 1024
 
 function send(res: ServerResponse, status: number, body: unknown) {
   const bytes = encoder.encode(JSON.stringify(body))
@@ -160,14 +163,18 @@ async function handleUpload(
   send(res, 201, toPublic(stored))
 }
 
-async function readJson(req: IncomingMessage, res: ServerResponse): Promise<unknown | undefined> {
+async function readJson(
+  req: IncomingMessage,
+  res: ServerResponse,
+  limit = MAX_COLLAGE_BODY_BYTES,
+): Promise<unknown | undefined> {
   const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase()
   if (contentType !== "application/json") {
     req.resume()
     send(res, 415, { error: "expected application/json" })
     return undefined
   }
-  const body = await readBody(req, MAX_COLLAGE_BODY_BYTES)
+  const body = await readBody(req, limit)
   if (body === null) {
     send(res, 413, { error: "request too large" })
     return undefined
@@ -332,6 +339,66 @@ function handleDetach(
   res.end()
 }
 
+async function handleAddPhotos(
+  req: IncomingMessage,
+  res: ServerResponse,
+  albums: Album[],
+  ownerId: string,
+  albumId: string,
+  storage: PhotoStorage | undefined,
+) {
+  if (!storage) {
+    req.resume()
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  if (!openAlbum(albums, ownerId, albumId)) {
+    req.resume()
+    send(res, 404, { error: "album not found" })
+    return
+  }
+
+  const body = await readJson(req, res)
+  if (body === undefined) return
+  const photoIds = typeof body === "object" && body !== null ? (body as { photoIds?: unknown }).photoIds : undefined
+  if (!Array.isArray(photoIds) || !photoIds.every((id) => typeof id === "string" && id !== "") ||
+    new Set(photoIds).size !== photoIds.length) {
+    send(res, 400, { error: "photoIds must be a unique array of strings" })
+    return
+  }
+
+  const selected = photoIds
+    .map((id) => storage.photos.find((photo) => photo.id === id && photo.ownerId === ownerId))
+    .filter((photo): photo is StoredPhoto => photo !== undefined)
+  if (selected.length !== photoIds.length) {
+    send(res, 404, { error: "one or more photos were not found" })
+    return
+  }
+
+  const filesInAlbum = new Set(storage.photos
+    .filter((photo) => photo.ownerId === ownerId && photo.albumId === albumId)
+    .map((photo) => photo.file))
+  const additions: StoredPhoto[] = []
+  for (const source of selected) {
+    if (!filesInAlbum.has(source.file)) {
+      filesInAlbum.add(source.file)
+      additions.push({ ...source, id: randomUUID(), albumId })
+    }
+  }
+
+  if (additions.length > 0) {
+    const originalLength = storage.photos.length
+    storage.photos.push(...additions)
+    try {
+      storage.save(storage.photos)
+    } catch (err) {
+      storage.photos.splice(originalLength)
+      throw err
+    }
+  }
+  send(res, 200, listPhotosForUser(storage.photos, ownerId, albumId))
+}
+
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
   const photo = storage?.photos.find((p) => p.file === file && p.ownerId === ownerId)
   if (!storage || !photo) {
@@ -358,12 +425,12 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
 
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
+      "GET, POST, PATCH, PUT, DELETE, OPTIONS"
     )
     
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type"
+      "Content-Type, X-File-Name"
     )
     
     if(req.method === "OPTIONS") {
@@ -379,6 +446,16 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
     }
 
     const upload = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos$/)
+    if (upload && req.method === "PATCH") {
+      const albumId = safeDecode(upload[1])
+      if (albumId === null) {
+        req.resume()
+        send(res, 400, { error: "bad album id" })
+        return
+      }
+      handleAddPhotos(req, res, albums, ownerId, albumId, photoStorage).catch(fail)
+      return
+    }
     if (upload && req.method === "POST") {
       const albumId = safeDecode(upload[1])
       if (albumId === null) {
@@ -402,6 +479,29 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
       } catch (err) {
         fail(err)
       }
+      return
+    }
+
+    if (url.pathname === "/api/photos/duplicates" && req.method === "GET") {
+      const albumId = url.searchParams.get("albumId") ?? undefined
+      handleDuplicateGroups(req, res, albums, ownerId, albumId, photoStorage).catch(fail)
+      return
+    }
+
+    if (url.pathname === "/api/photos/duplicates/delete" && req.method === "POST") {
+      handleDuplicateRemoval(req, res, albums, ownerId, photoStorage).catch(fail)
+      return
+    }
+
+    const duplicateRemoval = url.pathname.match(/^\/api\/photos\/duplicates\/([^/]+)$/)
+    if (duplicateRemoval && req.method === "DELETE") {
+      const photoId = safeDecode(duplicateRemoval[1])
+      if (photoId === null) {
+        req.resume()
+        send(res, 400, { error: "bad photo id" })
+        return
+      }
+      handleDuplicateRemoval(req, res, albums, ownerId, photoStorage, photoId).catch(fail)
       return
     }
 
@@ -444,4 +544,188 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
     }
     send(res, 404, { error: "not found" })
   })
+}
+
+function parseDuplicateAction(value: unknown): { albumId?: string; photoIds: string[] } | { error: string } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return { error: "expected a JSON object" }
+  const body = value as Record<string, unknown>
+  if ("albumId" in body && (typeof body.albumId !== "string" || body.albumId === "")) {
+    return { error: "albumId must be a non-empty string" }
+  }
+  const photoIds = body.photoIds
+  if (!Array.isArray(photoIds) || photoIds.length === 0 || !photoIds.every((id) => typeof id === "string" && id !== "")) {
+    return { error: "photoIds must be a non-empty list of non-empty strings" }
+  }
+  if (new Set(photoIds).size !== photoIds.length) return { error: "photoIds must not repeat" }
+  return {
+    ...(typeof body.albumId === "string" ? { albumId: body.albumId } : {}),
+    photoIds: photoIds as string[],
+  }
+}
+
+function replacePhotos(storage: PhotoStorage, next: StoredPhoto[]): void {
+  const previous = [...storage.photos]
+  storage.photos.splice(0, storage.photos.length, ...next)
+  try {
+    storage.save(storage.photos)
+  } catch (err) {
+    storage.photos.splice(0, storage.photos.length, ...previous)
+    throw err
+  }
+}
+
+function cleanupUnreferencedUploads(storage: PhotoStorage, removed: StoredPhoto[]): void {
+  const remaining = storage.photos
+  const referencedFiles = new Set(remaining.map((photo) => photo.file))
+  const referencedPaths = new Set<string>()
+  let referencesUnknown = false
+  for (const photo of remaining) {
+    try {
+      referencedPaths.add(resolveUploadFile(storage.uploadsDir, photo.file).realPath)
+    } catch {
+      referencesUnknown = true
+    }
+  }
+  if (referencesUnknown) console.error("Photo upload cleanup skipped; remaining photo paths could not be verified.")
+
+  // shortcut: failed cleanup or unresolvable references can leave orphan bytes; add a locked retrying GC if repair or multi-process writers are needed.
+  for (const file of new Set(removed.map((photo) => photo.file))) {
+    if (referencedFiles.has(file) || referencesUnknown) continue
+    try {
+      const upload = resolveUploadFile(storage.uploadsDir, file)
+      if (!referencedPaths.has(upload.realPath)) unlinkSync(upload.path)
+    } catch {
+      // The photo record is already gone; cleanup failure must not roll back committed metadata.
+      console.error("Photo upload cleanup failed; removed photo metadata remains committed.")
+    }
+  }
+}
+
+function removeLibraryUploads(storage: PhotoStorage, ownerId: string, files: Set<string>): void {
+  const removed = storage.photos.filter((photo) => photo.ownerId === ownerId && files.has(photo.file))
+  replacePhotos(storage, storage.photos.filter((photo) => photo.ownerId !== ownerId || !files.has(photo.file)))
+  cleanupUnreferencedUploads(storage, removed)
+}
+
+function detachAlbumUploads(storage: PhotoStorage, ownerId: string, albumId: string, files: Set<string>): void {
+  replacePhotos(storage, storage.photos.map((photo) =>
+    photo.ownerId === ownerId && photo.albumId === albumId && files.has(photo.file)
+      ? { ...photo, albumId: "" }
+      : photo,
+  ))
+}
+
+async function handleDuplicateGroups(
+  req: IncomingMessage,
+  res: ServerResponse,
+  albums: Album[],
+  ownerId: string,
+  albumId: string | undefined,
+  storage: PhotoStorage | undefined,
+) {
+  req.resume()
+  if (!storage) {
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  if (albumId !== undefined && !openAlbum(albums, ownerId, albumId)) {
+    send(res, 404, { error: "album not found" })
+    return
+  }
+  const groups = await findDuplicatePhotos(storage.photos, ownerId, storage.uploadsDir, albumId)
+  send(res, 200, groups)
+}
+
+async function handleDuplicateRemoval(
+  req: IncomingMessage,
+  res: ServerResponse,
+  albums: Album[],
+  ownerId: string,
+  storage: PhotoStorage | undefined,
+  photoId?: string,
+) {
+  if (!storage) {
+    req.resume()
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  let raw: unknown
+  let photoIds: string[] = []
+  if (photoId === undefined) {
+    raw = await readJson(req, res, MAX_DUPLICATE_ACTION_BODY_BYTES)
+    if (raw === undefined) return
+  } else {
+    req.resume()
+  }
+
+  let albumId: string | undefined
+  if (photoId === undefined) {
+    const parsed = parseDuplicateAction(raw)
+    if ("error" in parsed) {
+      send(res, 400, { error: parsed.error })
+      return
+    }
+    albumId = parsed.albumId
+    photoIds = parsed.photoIds
+  } else {
+    const queryAlbumId = new URL(req.url ?? "/", "http://127.0.0.1").searchParams.get("albumId")
+    albumId = queryAlbumId ?? undefined
+  }
+  if (albumId !== undefined && !openAlbum(albums, ownerId, albumId)) {
+    send(res, 404, { error: "album not found" })
+    return
+  }
+
+  const groups = await findDuplicatePhotos(storage.photos, ownerId, storage.uploadsDir, albumId)
+  const extraIds = new Set(groups.flatMap((group) => group.duplicates.map((photo) => photo.id)))
+  const scopedPhotos = storage.photos.filter((photo) => photo.ownerId === ownerId && (albumId === undefined || photo.albumId === albumId))
+  const idCounts = new Map<string, number>()
+  for (const photo of scopedPhotos) idCounts.set(photo.id, (idCounts.get(photo.id) ?? 0) + 1)
+  const uniqueId = (id: string) => idCounts.get(id) === 1
+  if (photoId !== undefined) {
+    if (!extraIds.has(photoId)) {
+      send(res, 409, { error: "photo is no longer a duplicate; scan again" })
+      return
+    }
+    if (!uniqueId(photoId)) {
+      send(res, 409, { error: "photo id is ambiguous; nothing was removed" })
+      return
+    }
+    const selected = scopedPhotos.find((photo) => photo.id === photoId)
+    if (!selected) {
+      send(res, 404, { error: "photo not found" })
+      return
+    }
+    const selectedFiles = new Set([selected.file])
+    if (albumId !== undefined) {
+      detachAlbumUploads(storage, ownerId, albumId, selectedFiles)
+      res.writeHead(204)
+      res.end()
+      return
+    }
+    removeLibraryUploads(storage, ownerId, selectedFiles)
+    res.writeHead(204)
+    res.end()
+    return
+  }
+
+  if (photoIds.some((id) => !extraIds.has(id))) {
+    send(res, 409, { error: "one or more selected photos are no longer duplicate extras; scan again" })
+    return
+  }
+  const removeIds = new Set(photoIds)
+  if ([...removeIds].some((id) => !uniqueId(id))) {
+    send(res, 409, { error: "duplicate photo ids are ambiguous; nothing was removed" })
+    return
+  }
+  const selectedFiles = new Set(scopedPhotos.filter((photo) => removeIds.has(photo.id)).map((photo) => photo.file))
+  if (removeIds.size > 0) {
+    if (albumId === undefined) {
+      removeLibraryUploads(storage, ownerId, selectedFiles)
+    } else {
+      detachAlbumUploads(storage, ownerId, albumId, selectedFiles)
+    }
+  }
+  res.writeHead(204)
+  res.end()
 }

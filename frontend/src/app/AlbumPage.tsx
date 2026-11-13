@@ -1,14 +1,17 @@
 import type { Album, Photo } from "./api.ts"
+import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 
 // Added conditions for albums with no photos 
 export function AlbumPage({
   album,
   photos = [],
   onRemove,
+  onPhotosChanged,
 }: {
   album: Album
   photos?: Photo[]
   onRemove?: (photoId: string) => void
+  onPhotosChanged?: () => void | Promise<void>
 }) {
   return (
     <article className="album">
@@ -19,6 +22,7 @@ export function AlbumPage({
         Preview and export album
       </a>
       <h2>{album.title}</h2>
+      <DuplicatePhotos albumId={album.id} onPhotosChanged={onPhotosChanged} />
       {photos.length === 0 ? (
         <p>No photos yet.</p>
       ) : (
