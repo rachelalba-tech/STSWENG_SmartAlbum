@@ -25,6 +25,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
         message = (body as { error: string }).error
       }
     } catch {
+      // not JSON: keep the status text
     }
     throw new ApiError(res.status, message)
   }
