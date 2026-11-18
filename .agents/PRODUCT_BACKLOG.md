@@ -6,7 +6,7 @@
 
 As a user, I want to create a new photo album so that I can organize and save photos from a particular event
 
-- **Status:** Done (PR #23; demo identity, admin authorization pending US #26)
+- **Status:** Done (PR #23/#27; persistent albums with admin authorization)
 
 - **Estimate or Story Points:** —
 - **Priority:** High
@@ -517,7 +517,7 @@ As a user I want to be able to add pictures to albums, upload pictures, delete p
 
 As a user and admin I want to be able to log in to my account using my username and password so that I can see the event pictures
 
-- **Status:** In progress — basic user login is functional; role-specific admin login remains pending
+- **Status:** Done (PR #27; hashed login, server-validated expiring sessions, logout and admin/user authorization; account provisioning remains manual)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne

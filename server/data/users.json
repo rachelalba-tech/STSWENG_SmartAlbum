@@ -2,6 +2,8 @@
   {
     "id": "demo-user",
     "username": "test",
-    "password": "tester123"
+    "role": "admin",
+    "salt": "ddafa5416ab8b91e866ae86f71c7ca62",
+    "passwordHash": "779b31fdedf3af8d52da9d1812d96f7e971ab8e41fd32c9bda24c48985f3115a7dc9c272464d76571e9b5c5f3f1c5fff4d2ed3dbaec32c3c0b986d376dbe7700"
   }
 ]

@@ -1,8 +1,9 @@
-import { randomUUID } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
 import { readFile, unlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { listAlbumsForUser, openAlbum, parseAlbumInput, type Album } from "./albums.ts"
+import { authenticateUser, type PublicUser, type User } from "./users.ts"
 import {
   MAX_COLLAGE_BODY_BYTES,
   listCollagesForUser,
@@ -36,6 +37,7 @@ type Options = {
   albums: Album[]
   ownerId: string
   saveAlbums?: (albums: Album[]) => void
+  users?: User[]
   photoStorage?: PhotoStorage
   collageStorage?: CollageStorage
 }
@@ -352,18 +354,30 @@ async function handleImage(res: ServerResponse, ownerId: string, file: string, s
   res.writeHead(200, {
     "content-type": type,
     "content-length": bytes.length,
-    "cache-control": "private, max-age=31536000, immutable",
+    "cache-control": "private, no-store",
     "x-content-type-options": "nosniff",
   })
   res.end(bytes)
 }
 
-export function createAlbumServer({ albums, ownerId, saveAlbums, photoStorage, collageStorage }: Options): Server {
+export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, users, photoStorage, collageStorage }: Options): Server {
+  // shortcut: sessions are process-local and capped; use a shared store before running multiple API instances.
+  const sessions = new Map<string, { user: PublicUser; expires: number }>()
+  const attempts = new Map<string, { count: number; expires: number }>()
+  let loginWork = 0
   return createServer((req, res) => {
-    res.setHeader(
-      "Access-Control-Allow-Origin",
-      "https://stsweng-smartalbum-1.onrender.com" 
-    )
+    const origin = req.headers.origin
+    const allowedOrigin = origin === undefined || origin === "https://stsweng-smartalbum-1.onrender.com" ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    res.setHeader("Vary", "Origin")
+    res.setHeader("Cache-Control", "no-store")
+    if (origin && allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", origin)
+      res.setHeader("Access-Control-Allow-Credentials", "true")
+    }
+    if (!allowedOrigin && req.method !== "GET") {
+      req.resume(); send(res, 403, { error: "origin not allowed" }); return
+    }
 
     res.setHeader(
       "Access-Control-Allow-Methods",
@@ -385,6 +399,62 @@ export function createAlbumServer({ albums, ownerId, saveAlbums, photoStorage, c
     const fail = (err: unknown) => {
       console.error(err)
       if (!res.headersSent) send(res, 500, { error: "server error" })
+    }
+
+    const now = Date.now()
+    for (const [token, session] of sessions) if (session.expires <= now) sessions.delete(token)
+    for (const [ip, attempt] of attempts) if (attempt.expires <= now) attempts.delete(ip)
+    const token = req.headers.cookie?.match(/(?:^|;\s*)smart-album-session=([a-f0-9]{64})(?:;|$)/)?.[1]
+    const session = token ? sessions.get(token) : undefined
+    const secure = req.headers["x-forwarded-proto"] === "https" || "encrypted" in req.socket
+    const cookie = (value: string, age: number) => `smart-album-session=${value}; Path=/api; HttpOnly; Max-Age=${age}; ${secure ? "SameSite=None; Secure" : "SameSite=Lax"}`
+
+    if (url.pathname === "/api/login" && req.method === "POST") {
+      const handleLogin = async () => {
+        const raw = await readJson(req, res)
+        if (raw === undefined) return
+        if (typeof raw !== "object" || raw === null) { send(res, 400, { error: "invalid credentials" }); return }
+        const { username, password } = raw as Record<string, unknown>
+        if (typeof username !== "string" || !username || username.length > 200 ||
+          typeof password !== "string" || !password || password.length > 1024) {
+          send(res, 400, { error: "invalid credentials" }); return
+        }
+        const ip = req.socket.remoteAddress ?? "unknown"
+        const attempt = attempts.get(ip) ?? { count: 0, expires: Date.now() + 60_000 }
+        if (attempt.count >= 20 || loginWork >= 4 || (attempts.size >= 1000 && !attempts.has(ip))) {
+          res.setHeader("Retry-After", "60"); send(res, 429, { error: "too many login attempts; retry in one minute" }); return
+        }
+        attempt.count++
+        attempts.set(ip, attempt)
+        loginWork++
+        let user: PublicUser | undefined
+        try { user = await authenticateUser(users ?? [], username, password) } finally { loginWork-- }
+        if (!user) { send(res, 401, { error: "invalid username or password" }); return }
+        if (sessions.size >= 1000) { send(res, 503, { error: "session capacity reached" }); return }
+        if (token) sessions.delete(token)
+        const nextToken = randomBytes(32).toString("hex")
+        sessions.set(nextToken, { user, expires: Date.now() + 8 * 60 * 60 * 1000 })
+        res.setHeader("Set-Cookie", cookie(nextToken, 8 * 60 * 60))
+        send(res, 200, user)
+      }
+      handleLogin().catch(fail)
+      return
+    }
+    if (url.pathname === "/api/logout" && req.method === "POST") {
+      req.resume()
+      if (token) sessions.delete(token)
+      res.setHeader("Set-Cookie", cookie("", 0))
+      res.writeHead(204); res.end(); return
+    }
+    if (url.pathname === "/api/session" && req.method === "GET") {
+      send(res, session ? 200 : 401, session?.user ?? { error: "sign in required" }); return
+    }
+    // Omitting users is only for existing injected-owner unit fixtures, never the runtime entry point.
+    if (users !== undefined && !session) { req.resume(); send(res, 401, { error: "sign in required" }); return }
+    const ownerId = session?.user.id ?? demoOwnerId
+    if (session?.user.role !== "admin" && users !== undefined &&
+      /^\/api\/albums(?:\/[^/]+)?$/.test(url.pathname) && ["POST", "PATCH"].includes(req.method ?? "")) {
+      req.resume(); send(res, 403, { error: "only administrators create and label albums" }); return
     }
 
     const albumRoute = url.pathname.match(/^\/api\/albums(?:\/([^/]+))?$/)

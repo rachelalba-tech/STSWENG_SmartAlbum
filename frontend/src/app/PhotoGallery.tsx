@@ -11,6 +11,8 @@ type PhotoGalleryProps = {
   subtitle?: string
   emptyTitle?: string
   emptyDescription?: string
+  onRemove?: (photoId: string) => void
+  busy?: boolean
 }
 
 export function PhotoGallery({
@@ -19,6 +21,8 @@ export function PhotoGallery({
   subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
   emptyTitle = "No photos yet",
   emptyDescription = "Upload photos to an album and they will appear here.",
+  onRemove,
+  busy = false,
 }: PhotoGalleryProps) {
   const [view, setView] = useState<GalleryView>("grid")
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -28,6 +32,7 @@ export function PhotoGallery({
     if (view !== "single") return
 
     const moveWithKeyboard = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName))) return
       if (event.key === "ArrowLeft") {
         setSelectedIndex((current) => Math.max(current - 1, 0))
       }
@@ -103,6 +108,7 @@ export function PhotoGallery({
                 />
                 <span>{photo.title || `Photo ${index + 1}`}</span>
               </button>
+              {onRemove && <button disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
             </li>
           ))}
         </ul>
@@ -143,6 +149,7 @@ export function PhotoGallery({
             </button>
           </div>
           <p className="pg-keyboard-hint">Use the arrow keys to browse photos</p>
+          {onRemove && <button disabled={busy} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
         </div>
       )}
     </section>

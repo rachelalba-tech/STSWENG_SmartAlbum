@@ -17,6 +17,7 @@ export function LoginPage({ onLogin, authenticate = login }: LoginPageProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (submitting) return
     setError(null)
     setSubmitting(true)
     try {
@@ -56,6 +57,8 @@ export function LoginPage({ onLogin, authenticate = login }: LoginPageProps) {
                 id="login-username"
                 name="username"
                 autoComplete="username"
+                maxLength={200}
+                disabled={submitting}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 required
@@ -67,6 +70,8 @@ export function LoginPage({ onLogin, authenticate = login }: LoginPageProps) {
                 name="password"
                 type="password"
                 autoComplete="current-password"
+                maxLength={1024}
+                disabled={submitting}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required

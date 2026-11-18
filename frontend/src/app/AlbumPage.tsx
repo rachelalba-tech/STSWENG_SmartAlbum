@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { Album, Photo } from "./api.ts"
+import { PhotoGallery } from "./PhotoGallery.tsx"
 
 export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd }: {
   album: Album
@@ -74,7 +75,10 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
         <button disabled={busy} onClick={() => void save(() => onReorder(order), () => setOrder(null))}>Save photo order</button>
         <button disabled={busy} onClick={() => setOrder(null)}>Cancel order</button>
       </>}
-      {photos.length === 0 ? <p>No photos yet.</p> : <ul className="photos" style={{ listStyle: "none", padding: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {!order ? <PhotoGallery photos={photos} title="Album photos" subtitle={`${photos.length} photos in this album`}
+        emptyTitle="No photos in this album" emptyDescription="Upload photos to this album and they will appear here."
+        busy={busy} onRemove={onRemove ? (id) => void save(async () => { await onRemove(id) }, () => {}) : undefined} />
+      : <ul className="photos" style={{ listStyle: "none", padding: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
         {displayed.map((photo, index) => <li key={photo.id} draggable={!!order && !busy}
           onDragStart={() => setDragged(photo.id)} onDragEnd={() => setDragged(null)}
           onDragOver={(e) => { if (order) e.preventDefault() }}

@@ -1,4 +1,4 @@
-import { API_URL } from "./api.ts"
+import { apiFetch, API_URL } from "./api.ts"
 import { isSavedCollage } from "./collageStore"
 import type { CollageDraft, SavedCollage } from "./collageStore"
 
@@ -14,7 +14,7 @@ export class ApiError extends Error {
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     ...init,
     headers: { accept: "application/json", ...(init.body ? { "content-type": "application/json" } : {}) },
   })

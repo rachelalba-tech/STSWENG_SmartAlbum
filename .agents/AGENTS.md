@@ -68,8 +68,17 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   Collages are persisted in `server/data/collages.json` through GET/POST/PUT/DELETE `/api/collages`.
   Saves use temporary files and atomic renames. Album deletion rolls back completed store writes
   on errors, but a process crash between JSON-file writes is not a database transaction.
-- **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
-  `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
+- **Identity and remaining features:** runtime loads hashed users from `server/data/users.json`.
+  `POST /api/login` validates scrypt hashes and issues an 8-hour HTTP-only session cookie;
+  `GET /api/session` restores the server identity and `POST /api/logout` revokes it (PR #27; US #26).
+  All data routes require a session and derive ownership from it, not client IDs/localStorage.
+  Only admins create and label albums; the UI hides these controls for regular users.
+  Sessions are process-local (restart signs everyone out), capped at 1000; login has bounded
+  hashing concurrency and a 20-attempt/IP/minute limit. Cross-origin mutations are checked;
+  allowed browsers are the deployed frontend and loopback HTTP. HTTPS cookies use SameSite=None
+  and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
+  The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
+  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo editing,
   export and photo analysis are not implemented. Template collages and saved-collage editing are
   implemented (PR #22; US #21). Collaboration and album cover selection remain page-local prototypes.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
@@ -81,6 +90,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   album without deleting the file. `server/test/album-writes.test.ts` covers persistent album CRUD,
   membership/order validation, ownership and failed-save rollback. Frontend editing tests cover
   asynchronous save failures, details, adding photos and accessible reordering.
+  Authentication tests cover hashed credentials, session rotation/expiry/logout, origin/rate limits,
+  admin authorization, ownership isolation, forged localStorage, credentialed requests and gallery removal.
   The server test script discovers `test/*.test.ts`; there is no separate server type-check/build.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests and pushes to `main`, on Node 22. Frontend job:
   `npm ci`, `npm run lint`, `npm test`, `npm run build` (test/build are currently duplicated).
