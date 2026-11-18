@@ -1,0 +1,7 @@
+Feature: Delete Album
+Included snippets:
+- frontend/AlbumManager.delete.snippet.tsx
+- frontend/api.deleteAlbum.snippet.ts
+- frontend/App.deleteAlbum-integration.snippet.tsx
+- backend/http.deleteAlbum-route.snippet.ts
+- backend/persistence.snippet.ts
