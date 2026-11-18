@@ -51,3 +51,14 @@ test("details and adding library photos use the save handlers and show errors", 
   fireEvent.click(screen.getByText("Add selected photos"))
   await waitFor(() => expect(add).toHaveBeenCalledWith(["two"]))
 })
+
+test("album grid and single view keep removal controls and disable them during saves", async () => {
+  const remove = vi.fn().mockResolvedValue(undefined)
+  render(<AlbumPage album={album} photos={photos} onRemove={remove} />)
+  fireEvent.click(screen.getByRole("button", { name: "Remove one from album" }))
+  await waitFor(() => expect(remove).toHaveBeenCalledWith("one"))
+  await waitFor(() => expect((screen.getByRole("button", { name: "Remove two from album" }) as HTMLButtonElement).disabled).toBe(false))
+  fireEvent.click(screen.getByRole("button", { name: "Open two" }))
+  fireEvent.click(screen.getByRole("button", { name: "Remove two from album" }))
+  await waitFor(() => expect(remove).toHaveBeenCalledWith("two"))
+})
