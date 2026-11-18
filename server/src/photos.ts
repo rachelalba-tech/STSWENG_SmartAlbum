@@ -7,6 +7,7 @@ export type Photo = {
   date: string
   albumId: string
   tags: string[]
+  position?: number
 }
 
 export type StoredPhoto = Photo & { ownerId: string; file: string }
@@ -22,8 +23,15 @@ export const IMAGE_TYPES: Record<string, string> = {
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024
 
 export function listPhotosForUser(photos: StoredPhoto[], ownerId: string, albumId?: string): Photo[] {
+  const files = new Set<string>()
   return photos
-    .filter((p) => p.ownerId === ownerId && (albumId === undefined || p.albumId === albumId))
+    .filter((p) => {
+      if (p.ownerId !== ownerId || (albumId !== undefined && p.albumId !== albumId)) return false
+      if (albumId === undefined && files.has(p.file)) return false
+      files.add(p.file)
+      return true
+    })
+    .sort((a, b) => albumId === undefined ? 0 : (a.position ?? 0) - (b.position ?? 0))
     .map(toPublic)
 }
 
