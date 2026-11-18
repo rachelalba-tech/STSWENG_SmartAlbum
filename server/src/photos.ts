@@ -9,10 +9,8 @@ export type Photo = {
   tags: string[]
 }
 
-// What is kept on the server: the public photo plus who owns it and which file holds the bytes.
 export type StoredPhoto = Photo & { ownerId: string; file: string }
 
-// Only real raster formats. SVG is deliberately excluded because it can carry scripts.
 export const IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
@@ -27,6 +25,14 @@ export function listPhotosForUser(photos: StoredPhoto[], ownerId: string, albumI
   return photos
     .filter((p) => p.ownerId === ownerId && (albumId === undefined || p.albumId === albumId))
     .map(toPublic)
+}
+
+// Drop the album link only. An empty albumId means the photo stays in the library.
+export function detachFromAlbum(photos: StoredPhoto[], ownerId: string, albumId: string, photoId: string): boolean {
+  const photo = photos.find((p) => p.id === photoId && p.ownerId === ownerId && p.albumId === albumId)
+  if (!photo) return false
+  photo.albumId = ""
+  return true
 }
 
 export function toPublic({ ownerId: _ownerId, file: _file, ...photo }: StoredPhoto): Photo {
