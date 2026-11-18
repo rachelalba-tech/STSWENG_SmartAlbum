@@ -40,16 +40,14 @@ function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
 
   useEffect(() => {
     let active = true
-    // Photo counts and covers are a nice-to-have, so a failure here must not hide the albums.
-    fetchPhotos().then(
-      (next) => {
-        if (active) setPhotos(next)
-      },
-      () => {},
-    )
     fetchAlbums().then(
       (next) => {
         if (active) setAlbums(next.map(toManaged))
+        // Collages/counts need every album membership, not the deduplicated library.
+        Promise.all(next.map((album) => fetchPhotos(album.id))).then(
+          (members) => { if (active) setPhotos(members.flat()) },
+          () => {},
+        )
       },
       () => {
         if (active) setError("Could not load albums. Start the server with npm start in server/.")
