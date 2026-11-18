@@ -1,0 +1,30 @@
+[
+  {
+    "id": "5e94cdbb-b35b-4288-b0ca-038d6a644007",
+    "albumId": "opening",
+    "name": "Opening ceremony collage",
+    "templateId": "two-over-one",
+    "photoIds": [
+      "dc148c2b-a482-4ddb-8d7f-1646d133f1df",
+      "707157dd-a0be-4cf3-99ed-1c8a1439179b",
+      "993fd8bd-508c-4656-8705-da2007956a54"
+    ],
+    "ownerId": "demo-user",
+    "createdAt": "2026-11-09T12:00:37.099Z",
+    "updatedAt": "2026-11-09T12:00:37.099Z"
+  },
+  {
+    "id": "b215074f-6927-4111-bad2-8b006b9eb53d",
+    "albumId": "opening",
+    "name": "Opening ceremony collage",
+    "templateId": "two-over-one",
+    "photoIds": [
+      "dc148c2b-a482-4ddb-8d7f-1646d133f1df",
+      "993fd8bd-508c-4656-8705-da2007956a54",
+      "707157dd-a0be-4cf3-99ed-1c8a1439179b"
+    ],
+    "ownerId": "demo-user",
+    "createdAt": "2026-11-09T12:00:52.361Z",
+    "updatedAt": "2026-11-09T12:00:52.361Z"
+  }
+]

@@ -1,7 +1,15 @@
 import type { Album, Photo } from "./api.ts"
 
 // Added conditions for albums with no photos 
-export function AlbumPage({ album, photos = [] }: { album: Album; photos?: Photo[] }) {
+export function AlbumPage({
+  album,
+  photos = [],
+  onRemove,
+}: {
+  album: Album
+  photos?: Photo[]
+  onRemove?: (photoId: string) => void
+}) {
   return (
     <article className="album">
       <a className="back" href="#/">
@@ -20,6 +28,11 @@ export function AlbumPage({ album, photos = [] }: { album: Album; photos?: Photo
               <a href={photo.src} target="_blank" rel="noreferrer">
                 <img src={photo.thumbnail} alt={photo.title || "Photo"} width={160} height={160} loading="lazy" style={{ objectFit: "cover" }} />
               </a>
+              {onRemove && (
+                <button type="button" onClick={() => onRemove(photo.id)}>
+                  Remove {photo.title || "photo"} from album
+                </button>
+              )}
             </li>
           ))}
         </ul>
