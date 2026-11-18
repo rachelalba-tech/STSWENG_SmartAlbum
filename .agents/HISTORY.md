@@ -3,6 +3,8 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-19 · test/upload-photo · test(browser): repair and extend Robot suites; add isolated local API/build harness, persistence checks and CI browser evidence (PR #32; US #1/#2/#3/#4/#6/#7/#8/#9/#10/#21/#26). All 13 Chrome tests pass locally.
+
 - 2026-11-19 · feat/login · fix(auth): replace plaintext/UI-only login with hashed credentials, expiring HTTP-only sessions, session ownership and admin authorization; retain collages and grid/single album removal (PR #27; US #26/#10).
 - 2026-11-19 · John/-US-backend-of-1-2-4-8 · fix(album): load full memberships for album cards and collages instead of deduplicated library entries (PR #23; US #6/#21).
 

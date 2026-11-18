@@ -95,15 +95,21 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   admin authorization, ownership isolation, forged localStorage, credentialed requests and gallery removal.
   The server test script discovers `test/*.test.ts`; there is no separate server type-check/build.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests and pushes to `main`, on Node 22. Frontend job:
-  `npm ci`, `npm run lint`, `npm test`, `npm run build` (test/build are currently duplicated).
-  Server job: `npm test`. Both jobs run for every PR; there
-  are no path filters or cancellation of outdated runs. Formatting and
-  end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
+  `npm ci`, `npm run lint`, `npm test`, `npm run build`.
+  Server job: `npm test`. Browser job: Python 3.12, pinned Robot/Selenium dependencies,
+  headless Chrome against a built frontend and disposable loopback API; reports, screenshots and
+  API request logs are uploaded even on failure (PR #32). All three jobs run for every PR; there
+  are no path filters or cancellation of outdated runs. Formatting,
+  PR-title validation, automatic labeling, dependency updates and
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
   and force pushes for everyone and requires a PR with one approval from someone other than the
   last pusher; a new push dismisses earlier approvals. This branch includes PR #24's shared lint fixes.
-- **Formatter / end-to-end tests:** no formatter. `tests/create_album.robot` is a manual Selenium
-  suite; it is not in CI. PR #32 repairs and extends these browser tests.
+- **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
+  creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
+  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
+  `tests/run-browser.mjs` builds with a forced local API, creates disposable JSON/upload stores,
+  checks persisted photo bytes, and closes servers/removes its stores after success or failure.
+  Original image fixtures and their ZIP remain unchanged; WebP fixture casing is `sample.WEBP`.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
   `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
   read-only page with no controls inside it. This preview does not render saved collage layouts; export
@@ -143,7 +149,17 @@ both dev and preview forward `/api` to port 3000 and need the API running. The s
 does not include a proxy.
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
-`server/`, `npm test` must pass. When a formatter is added, add it here too.
+`server/`, `npm test` must pass. From the root, browser suites must pass:
+
+```bash
+python -m pip install -r tests/requirements.txt
+node --experimental-strip-types tests/run-browser.mjs
+```
+
+Requires Node 22, Python 3.12+ and installed Chrome; Selenium Manager supplies the driver.
+Pass the Python executable as the harness's first argument (or `ROBOT_PYTHON`) for a virtual
+environment. Use the harness, not a deployed API: it overrides `.env` API settings and uses
+isolated stores. Results are in ignored `tests/results/`. When a formatter is added, add it here too.
 
 ## Rules (from `PROPOSAL.md`, with a documentation-only exception)
 
