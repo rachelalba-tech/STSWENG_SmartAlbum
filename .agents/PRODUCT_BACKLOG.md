@@ -169,7 +169,7 @@ AC2: It is easy to understand where to write the album headlines and description
 
 As a user, I want to upload multiple photos at once so that I can quickly add pictures to an album.
 
-- **Status:** Done (PR #14, Natt)
+- **Status:** Done (PR #14, Natt; PR #32 adds automated real-browser upload, validation and persistence regressions)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt

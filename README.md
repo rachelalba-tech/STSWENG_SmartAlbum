@@ -87,4 +87,33 @@ reverse proxy if the browser blocks third-party cookies. Forward `X-Forwarded-Pr
 from a trusted proxy. Sessions and rate limits are process-local; use one API instance until a
 shared session store is added. Album stores remain JSON files, not crash-atomic multi-file transactions.
 
+## 5. Run checks
+
+Use Node 22. In `frontend/`, run `npm test`, `npm run lint` and `npm run build`.
+In `server/`, run `npm test`.
+
+For the browser gate, install Python 3.12+ and Chrome, then run from the project root:
+
+```bash
+npm ci --prefix frontend
+python -m pip install -r tests/requirements.txt
+node --experimental-strip-types tests/run-browser.mjs
+```
+
+The harness starts its own disposable API and built frontend on loopback ports. It forces the
+local API even if `.env` names a deployed server; no development server or seeded data is used.
+It runs 13 headless Chrome tests and checks persisted image bytes. Temporary stores are removed
+on exit. Selenium Manager downloads a matching driver when needed (network access required).
+
+For a virtual environment, pass its Python executable as the first argument to the Node command,
+or set `ROBOT_PYTHON`. `ROBOT_BROWSER=chrome` runs headed Chrome instead of headless Chrome.
+Reports, screenshots and `api.log` are written to ignored `tests/results/`; CI uploads these
+as `robot-browser-results` for seven days. Browser tests are destructive only to their temporary
+data: do not point the suites at a deployed app or your regular development data.
+
+Coverage includes album creation/details, JPG/PNG/GIF/WebP uploads, mixed-validity selection,
+size rejection, queue removal, refresh persistence, saved order, copied-photo collages,
+grid/single membership removal, album deletion preserving library files, and session/logout.
+The checked-in fixtures and ZIP are retained; the WebP file is named `sample.WEBP`.
+
 # STSWENG_PhotoAlbumManager
