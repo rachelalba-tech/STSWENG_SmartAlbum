@@ -13,6 +13,7 @@ function isStoredPhoto(value: unknown): value is StoredPhoto {
     typeof p.description === "string" &&
     typeof p.date === "string" &&
     typeof p.albumId === "string" &&
+    (p.position === undefined || (Number.isSafeInteger(p.position) && (p.position as number) >= 0)) &&
     Array.isArray(p.tags) &&
     typeof p.ownerId === "string" &&
     typeof p.file === "string"

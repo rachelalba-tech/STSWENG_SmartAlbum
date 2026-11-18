@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { fetchAlbum, fetchAlbums, fetchPhotos, removePhotoFromAlbum } from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
 import type { Album, Photo } from "./api.ts"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AlbumPreview } from "./AlbumPreview.tsx"
@@ -26,7 +26,7 @@ function useHash() {
 const toManaged = (a: Album): ManagedAlbum => ({
   id: a.id,
   name: a.title,
-  description: "",
+  description: a.description ?? "",
   collaborationEnabled: false,
   collaborators: [],
 })
@@ -74,8 +74,24 @@ function AlbumListRoute() {
         collages={collages}
         onCollageSave={save}
         onCollageDelete={remove}
-        onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
-        onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
+        onAlbumCreate={async (a) => {
+          const saved = await createAlbum(a.name, a.description)
+          setAlbums((prev) => [...(prev ?? []), toManaged(saved)])
+        }}
+        onAlbumUpdate={async (a) => {
+          const current = albums.find((x) => x.id === a.id)
+          if (current?.name !== a.name || current?.description !== a.description) {
+            const saved = await updateAlbum(a.id, a.name, a.description)
+            a = { ...a, name: saved.title, description: saved.description ?? "" }
+          }
+          setAlbums((prev) => (prev ?? []).map((x) => x.id === a.id ? a : x))
+        }}
+        onAlbumDelete={async (id) => {
+          await deleteAlbum(id)
+          setAlbums((prev) => (prev ?? []).filter((a) => a.id !== id))
+          setPhotos((prev) => prev.map((p) => p.albumId === id ? { ...p, albumId: "" } : p))
+          reload()
+        }}
         onAlbumSelect={(id) => {
           window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
         }}
@@ -88,6 +104,7 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   const [album, setAlbum] = useState<Album | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [library, setLibrary] = useState<Photo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -120,6 +137,14 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
     }
   }, [id])
 
+  useEffect(() => {
+    let active = true
+    fetchPhotos().then((next) => { if (active) setLibrary(next) }, () => {
+      if (active) setPhotoError("Could not load the photo library.")
+    })
+    return () => { active = false }
+  }, [])
+
   async function removePhoto(photoId: string) {
     try {
       await removePhotoFromAlbum(id, photoId)
@@ -143,7 +168,12 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} />}
+      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage
+        album={album} photos={photos} library={library} onRemove={removePhoto}
+        onUpdate={async (title, description) => setAlbum(await updateAlbum(id, title, description))}
+        onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
+        onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
+      />}
       {photoError && <p>{photoError}</p>}
     </>
   )

@@ -4,7 +4,7 @@ import { CURRENT_USER_ID } from "./current-user.ts"
 import { loadCollages, saveCollages } from "./collage-store.ts"
 import { createAlbumServer } from "./http.ts"
 import { loadPhotos, savePhotos } from "./photo-store.ts"
-import { loadAlbums } from "./store.ts"
+import { loadAlbums, saveAlbums } from "./store.ts"
 
 
 const dataFile = fileURLToPath(new URL("../data/albums.json", import.meta.url))
@@ -17,6 +17,7 @@ const photos = loadPhotos(photosFile)
 const collages = loadCollages(collagesFile)
 const server = createAlbumServer({
   albums: loadAlbums(dataFile),
+  saveAlbums: (all) => saveAlbums(dataFile, all),
   ownerId: CURRENT_USER_ID,
   photoStorage: { photos, uploadsDir, save: (all) => savePhotos(photosFile, all) },
   collageStorage: { collages, save: (all) => saveCollages(collagesFile, all) },

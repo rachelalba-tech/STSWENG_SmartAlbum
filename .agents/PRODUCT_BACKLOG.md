@@ -6,6 +6,8 @@
 
 As a user, I want to create a new photo album so that I can organize and save photos from a particular event
 
+- **Status:** Done (PR #23; demo identity, admin authorization pending US #26)
+
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt, John
@@ -22,6 +24,8 @@ As a user, I want to create a new photo album so that I can organize and save ph
 ### US #2
 
 As a user, I want to delete photo albums that I no longer need so that I can only keep the photo albums I want
+
+- **Status:** Done (PR #23; deletes album/collages, keeps library photos)
 
 - **Estimate or Story Points:** —
 - **Priority:** High
@@ -56,6 +60,8 @@ As a user, I want to view all my photo albums in one place so that I can easily 
 ### US #4
 
 As a user I want to edit the order or layout of the pictures in the albums so that I can create a visual story using the pictures
+
+- **Status:** Done (PR #23; persisted drag/button photo order; template layouts are US #21)
 
 - **Estimate or Story Points:** 3
 - **Priority:** High
@@ -105,6 +111,8 @@ AC1: Any changes made to the album title and description is saved
 
 As a user I want to add photos to an album so that I can organize my photos into dedicated albums
 
+- **Status:** Done (PR #23; persisted library memberships without moving original photos)
+
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** John
@@ -137,6 +145,8 @@ As a user, I want to remove photos from an album so that I can revise its conten
 ### US #8
 
 As a user, I want to add headlines and descriptions to the albums so that it can give the user an idea of what is happening in the pictures
+
+- **Status:** Done (PR #23; persisted headline and description)
 
 - **Estimate or Story Points:** 3
 - **Priority:** Low

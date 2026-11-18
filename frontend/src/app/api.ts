@@ -1,9 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
+const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "")
 
 export type Album = {
   id: string
   title: string
   ownerId: string
+  description?: string
 }
 
 export type Photo = {
@@ -26,7 +27,8 @@ function isAlbum(value: unknown): value is Album {
     typeof album.id === "string" &&
     album.id !== "" &&
     typeof album.title === "string" &&
-    typeof album.ownerId === "string"
+    typeof album.ownerId === "string" &&
+    (album.description === undefined || typeof album.description === "string")
   )
 }
 
@@ -38,8 +40,10 @@ function parsePhoto(value: unknown): Photo | null {
   if (typeof p.src !== "string" || typeof p.albumId !== "string") return null
   return {
     id: p.id,
-    src: p.src,
-    thumbnail: typeof p.thumbnail === "string" ? p.thumbnail : p.src,
+    src: p.src.startsWith("/api/uploads/") ? API_URL + p.src : p.src,
+    thumbnail: typeof p.thumbnail === "string"
+      ? (p.thumbnail.startsWith("/api/uploads/") ? API_URL + p.thumbnail : p.thumbnail)
+      : (p.src.startsWith("/api/uploads/") ? API_URL + p.src : p.src),
     title: typeof p.title === "string" ? p.title : "",
     description: typeof p.description === "string" ? p.description : "",
     date: typeof p.date === "string" ? p.date : "",
@@ -103,4 +107,47 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string): Pr
   )
   if (res.status === 404) throw new Error("That photo is not in this album")
   if (!res.ok) throw new Error("Could not remove photo")
+}
+
+export async function createAlbum(title: string, description = ""): Promise<Album> {
+  return writeAlbum("", "POST", title, description)
+}
+
+export async function updateAlbum(id: string, title: string, description: string): Promise<Album> {
+  return writeAlbum(`/${encodeURIComponent(id)}`, "PATCH", title, description)
+}
+
+async function writeAlbum(path: string, method: string, title: string, description: string): Promise<Album> {
+  const res = await fetch(`${API_URL}/api/albums${path}`, {
+    method, headers: { "content-type": "application/json" }, body: JSON.stringify({ title, description }),
+  })
+  if (!res.ok) throw new Error(`Could not save album (${res.status})`)
+  const album: unknown = await res.json()
+  if (!isAlbum(album)) throw new Error("Could not save album: unexpected response")
+  return album
+}
+
+export async function deleteAlbum(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/albums/${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`Could not delete album (${res.status})`)
+}
+
+export async function addPhotosToAlbum(id: string, photoIds: string[]): Promise<Photo[]> {
+  return writePhotos(id, "", photoIds)
+}
+
+export async function reorderAlbumPhotos(id: string, photoIds: string[]): Promise<Photo[]> {
+  return writePhotos(id, "/order", photoIds)
+}
+
+async function writePhotos(id: string, path: string, photoIds: string[]): Promise<Photo[]> {
+  const res = await fetch(`${API_URL}/api/albums/${encodeURIComponent(id)}/photos${path}`, {
+    method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ photoIds }),
+  })
+  if (!res.ok) throw new Error(`Could not save album photos (${res.status})`)
+  const body: unknown = await res.json()
+  if (!Array.isArray(body)) throw new Error("Unexpected photo response")
+  const photos = body.map(parsePhoto)
+  if (photos.some((p) => !p)) throw new Error("Unexpected photo response")
+  return photos as Photo[]
 }

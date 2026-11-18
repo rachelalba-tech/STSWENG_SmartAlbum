@@ -3,6 +3,8 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-19 · John/-US-backend-of-1-2-4-8 · fix(album): integrate persistent album CRUD, details, shared-file memberships and saved photo order; preserve library bytes and test ownership/rollback (PR #23; US #1/#2/#4/#6/#8).
+
 - 2026-11-12 · fix/frontend-lint · fix(frontend): clear the four lint errors so the new CI lint step passes on `main`.
 - 2026-11-05 · feat/album-preview · feat(album): read-only album preview before export; mark done stories (US #3, #9, #10, #22) in the backlog (Joed; US #22).
 - 2026-10-31 · main · feat(photos): add the all-photo grid and expanded arrow-key photo viewer (US #10).
