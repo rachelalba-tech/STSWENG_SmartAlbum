@@ -102,8 +102,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   are no path filters or cancellation of outdated runs. Formatting,
   PR-title validation, automatic labeling, dependency updates and
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
-  and force pushes for everyone and requires a PR with one approval from someone other than the
-  last pusher; a new push dismisses earlier approvals. This branch includes PR #24's shared lint fixes.
+  and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
+  Stale approvals are dismissed when the head or merge base changes; approval by someone other than
+  the last pusher is not required by the live ruleset. This branch includes PR #24's shared lint fixes.
 - **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
   creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
   grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
