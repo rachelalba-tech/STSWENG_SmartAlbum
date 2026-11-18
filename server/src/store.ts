@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, renameSync, writeFileSync } from "node:fs"
 import type { Album } from "./albums.ts"
 
 function isAlbum(value: unknown): value is Album {
@@ -8,7 +8,8 @@ function isAlbum(value: unknown): value is Album {
     typeof album.id === "string" &&
     album.id !== "" &&
     typeof album.title === "string" &&
-    typeof album.ownerId === "string"
+    typeof album.ownerId === "string" &&
+    (album.description === undefined || typeof album.description === "string")
   )
 }
 
@@ -18,4 +19,10 @@ export function loadAlbums(file: string): Album[] {
     throw new Error(`Invalid album file: ${file}`)
   }
   return parsed
+}
+
+export function saveAlbums(file: string, albums: Album[]): void {
+  const tmp = `${file}.tmp`
+  writeFileSync(tmp, JSON.stringify(albums, null, 2))
+  renameSync(tmp, file)
 }

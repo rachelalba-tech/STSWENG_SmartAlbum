@@ -1,0 +1,9 @@
+Feature: US1
+Included code snippets:
+- backend/album-description-type.snippet.ts
+- backend/http.createAlbum-route.snippet.ts
+- backend/persistence.snippet.ts
+- backend/readJson.helper.snippet.ts
+- frontend/AlbumManager.create.snippet.tsx
+- frontend/App.createAlbum-integration.snippet.tsx
+- frontend/api.createAlbum.snippet.ts

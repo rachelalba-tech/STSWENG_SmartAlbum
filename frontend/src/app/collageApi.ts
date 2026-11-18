@@ -1,7 +1,8 @@
+import { API_URL } from "./api.ts"
 import { isSavedCollage } from "./collageStore"
 import type { CollageDraft, SavedCollage } from "./collageStore"
 
-const BASE = "/api/collages"
+const BASE = `${API_URL}/api/collages`
 
 export class ApiError extends Error {
   readonly status: number
