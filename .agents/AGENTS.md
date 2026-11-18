@@ -65,6 +65,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   Albums also have an optional `description`. `PATCH /api/albums/:id/photos` adds immutable-file
   memberships; `PATCH /api/albums/:id/photos/order` validates and saves an exact permutation.
   The library lists each physical file once; album lists sort by optional persisted `position`.
+  Album cards and collage controls load each album's full membership list, including shared-file copies.
   Collages are persisted in `server/data/collages.json` through GET/POST/PUT/DELETE `/api/collages`.
   Saves use temporary files and atomic renames. Album deletion rolls back completed store writes
   on errors, but a process crash between JSON-file writes is not a database transaction.
