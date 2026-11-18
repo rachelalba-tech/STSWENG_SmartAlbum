@@ -1,12 +1,9 @@
+const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
+
 export type Album = {
   id: string
   title: string
   ownerId: string
-}
-
-export type User = {
-  id: string
-  username: string
 }
 
 export type Photo = {
@@ -20,6 +17,8 @@ export type Photo = {
   tags: string[]
 }
 
+//console.log("API URL:", import.meta.env.VITE_API_URL);
+
 function isAlbum(value: unknown): value is Album {
   if (typeof value !== "object" || value === null) return false
   const album = value as Record<string, unknown>
@@ -29,30 +28,6 @@ function isAlbum(value: unknown): value is Album {
     typeof album.title === "string" &&
     typeof album.ownerId === "string"
   )
-}
-
-function isUser(value: unknown): value is User {
-  if (typeof value !== "object" || value === null) return false
-  const user = value as Record<string, unknown>
-  return (
-    typeof user.id === "string" &&
-    user.id !== "" &&
-    typeof user.username === "string" &&
-    user.username !== ""
-  )
-}
-
-export async function login(username: string, password: string): Promise<User> {
-  const res = await fetch("/api/login", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  })
-  if (res.status === 401) throw new Error("Incorrect username or password")
-  if (!res.ok) throw new Error("Could not sign in")
-  const user: unknown = await res.json()
-  if (!isUser(user)) throw new Error("Could not sign in")
-  return user
 }
 
 // Required: id, src and albumId  
@@ -74,7 +49,7 @@ function parsePhoto(value: unknown): Photo | null {
 }
 
 export async function fetchAlbums(): Promise<Album[]> {
-  const res = await fetch("/api/albums")
+  const res = await fetch(`${API_URL}/api/albums`)
   if (!res.ok) throw new Error("Could not load albums")
   const body: unknown = await res.json()
   if (!Array.isArray(body) || !body.every(isAlbum)) throw new Error("Could not load albums")
@@ -82,7 +57,7 @@ export async function fetchAlbums(): Promise<Album[]> {
 }
 
 export async function fetchAlbum(id: string): Promise<Album> {
-  const res = await fetch(`/api/albums/${encodeURIComponent(id)}`)
+  const res = await fetch(`${API_URL}/api/albums/${encodeURIComponent(id)}`)
   if (res.status === 404) throw new Error("Album not found")
   if (!res.ok) throw new Error("Could not open album")
   const body: unknown = await res.json()
@@ -94,7 +69,7 @@ export async function fetchAlbum(id: string): Promise<Album> {
 // GET /api/photos?albumId=ID -> photos of one album
 export async function fetchPhotos(albumId?: string): Promise<Photo[]> {
   const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
-  const res = await fetch(`/api/photos${query}`)
+  const res = await fetch(`${API_URL}/api/photos${query}`)
   if (!res.ok) throw new Error("Could not load photos")
   const body: unknown = await res.json()
   if (!Array.isArray(body)) throw new Error("Could not load photos")
@@ -106,7 +81,7 @@ export async function fetchPhotos(albumId?: string): Promise<Photo[]> {
 // POST /api/albums/:id/photos
 // Errors for image type, photo size, and failed upload 
 export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
-  const res = await fetch(`/api/albums/${encodeURIComponent(albumId)}/photos`, {
+  const res = await fetch(`${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`, {
     method: "POST",
     headers: { "content-type": file.type, "x-file-name": encodeURIComponent(file.name) },
     body: file,
@@ -117,4 +92,15 @@ export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
   const created = parsePhoto(await res.json())
   if (!created) throw new Error("Upload failed: unexpected server response")
   return created
+}
+
+// DELETE /api/albums/:albumId/photos/:photoId
+// The file stays in the library. Only the album link is cleared.
+export async function removePhotoFromAlbum(albumId: string, photoId: string): Promise<void> {
+  const res = await fetch(
+    `${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos/${encodeURIComponent(photoId)}`,
+    { method: "DELETE" },
+  )
+  if (res.status === 404) throw new Error("That photo is not in this album")
+  if (!res.ok) throw new Error("Could not remove photo")
 }

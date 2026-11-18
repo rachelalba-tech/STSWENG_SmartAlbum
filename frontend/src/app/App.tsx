@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { fetchAlbum, fetchAlbums, fetchPhotos } from "./api.ts"
-import type { Album, Photo, User } from "./api.ts"
-// import { AlbumList } from "./AlbumList.tsx"
+import { fetchAlbum, fetchAlbums, fetchPhotos, removePhotoFromAlbum } from "./api.ts"
+import type { Album, Photo } from "./api.ts"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
@@ -12,21 +11,7 @@ import { PhotoGallery } from "./PhotoGallery.tsx"
 import { albumIdFromHash, pageFromHash, previewAlbumIdFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
-import { LoginPage } from "./LoginPage.tsx"
-
-const SESSION_KEY = "smart-album-user"
-
-function readSession(): User | null {
-  try {
-    const value: unknown = JSON.parse(window.localStorage.getItem(SESSION_KEY) ?? "null")
-    if (typeof value !== "object" || value === null) return null
-    const user = value as Record<string, unknown>
-    if (typeof user.id !== "string" || typeof user.username !== "string") return null
-    return { id: user.id, username: user.username }
-  } catch {
-    return null
-  }
-}
+import { useCollages } from "./useCollages.ts"
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -37,7 +22,7 @@ function useHash() {
   }, [])
   return hash
 }
-// Your API albums only have id/title/ownerId, so fill in the rest
+
 const toManaged = (a: Album): ManagedAlbum => ({
   id: a.id,
   name: a.title,
@@ -50,6 +35,7 @@ function AlbumListRoute() {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
+  const { collages, status, reload, save, remove } = useCollages()
 
   useEffect(() => {
     let active = true
@@ -76,15 +62,25 @@ function AlbumListRoute() {
   if (error) return <p>{error}</p>
   if (!albums) return <p>Loading albums…</p>
   return (
-    <AlbumManager
-      albums={albums}
-      photos={photos}
-      onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
-      onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
-      onAlbumSelect={(id) => {
-        window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
-      }}
-    />
+    <>
+      {status === "error" && (
+        <p role="alert">
+          Couldn't load saved collages. <button onClick={reload}>Retry</button>
+        </p>
+      )}
+      <AlbumManager
+        albums={albums}
+        photos={photos}
+        collages={collages}
+        onCollageSave={save}
+        onCollageDelete={remove}
+        onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
+        onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
+        onAlbumSelect={(id) => {
+          window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
+        }}
+      />
+    </>
   )
 }
 
@@ -111,6 +107,8 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
 
   useEffect(() => {
     let active = true
+    setPhotos([])
+    setPhotoError(null)
     fetchPhotos(id).then(
       (next) => {
         if (active) setPhotos(next)
@@ -123,6 +121,16 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
       active = false
     }
   }, [id])
+
+  async function removePhoto(photoId: string) {
+    try {
+      await removePhotoFromAlbum(id, photoId)
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId))
+      setPhotoError(null)
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Could not remove photo")
+    }
+  }
 
   if (error) {
     return (
@@ -137,7 +145,7 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} />}
+      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} />}
       {photoError && <p>{photoError}</p>}
     </>
   )
@@ -215,45 +223,22 @@ function PhotosRoute() {
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(readSession)
   const hash = useHash()
   const albumId = albumIdFromHash(hash)
   const previewId = previewAlbumIdFromHash(hash)
   const page = albumId || previewId ? "albums" : pageFromHash(hash)
 
-  if (!currentUser) {
-    return (
-      <LoginPage
-        onLogin={(user) => {
-          window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
-          setCurrentUser(user)
-        }}
-      />
-    )
-  }
-
   return (
     <section id="center">
       <header className="app-header">
         <h1>Smart Photo Album</h1>
-        <div className="app-account">
-          <span>{currentUser.username}</span>
-          <button
-            type="button"
-            onClick={() => {
-              window.localStorage.removeItem(SESSION_KEY)
-              setCurrentUser(null)
-            }}
-          >
-            Log out
-          </button>
-        </div>
       </header>
       <AppTabs active={page} />
       {previewId ? (
-        <AlbumRoute key={`preview:${previewId}`} id={previewId} preview />
+        // Keyed so switching between album and preview of the same id refetches and remounts.
+        <AlbumRoute key={"preview:" + previewId} id={previewId} preview />
       ) : albumId ? (
-        <AlbumRoute key={albumId} id={albumId} />
+        <AlbumRoute id={albumId} />
       ) : page === "upload" ? (
         <UploadRoute />
       ) : page === "photos" ? (

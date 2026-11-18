@@ -8,8 +8,6 @@ import { listAlbumsForUser, openAlbum, type Album } from "../src/albums.ts"
 import { CURRENT_USER_ID } from "../src/current-user.ts"
 import { createAlbumServer } from "../src/http.ts"
 import { loadAlbums } from "../src/store.ts"
-import { loadUsers } from "../src/user-store.ts"
-import type { User } from "../src/users.ts"
 
 const mixed: Album[] = [
   { id: "a", title: "Opening ceremony", ownerId: "demo-user" },
@@ -44,13 +42,8 @@ test("rejects an album file that is not a list of albums", () => {
   assert.throws(() => loadAlbums(file), /Invalid album file/)
 })
 
-async function withServer(
-  albums: Album[],
-  ownerId: string,
-  run: (base: string) => Promise<void>,
-  users: User[] = [],
-) {
-  const server = createAlbumServer({ albums, ownerId, users })
+async function withServer(albums: Album[], ownerId: string, run: (base: string) => Promise<void>) {
+  const server = createAlbumServer({ albums, ownerId })
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
   const address = server.address()
   if (address === null || typeof address === "string") {
@@ -72,49 +65,6 @@ test("GET /api/albums returns every album for the user", async () => {
     assert.equal(res.status, 200)
     assert.deepEqual(await res.json(), [mixed[0], mixed[2], mixed[3]])
   })
-})
-
-test("loads the seeded login user from the data store", () => {
-  const seed = fileURLToPath(new URL("../data/users.json", import.meta.url))
-  assert.deepEqual(loadUsers(seed), [
-    { id: "demo-user", username: "test", password: "tester123" },
-  ])
-})
-
-test("POST /api/login accepts the seeded credentials without returning the password", async () => {
-  const users: User[] = [{ id: "demo-user", username: "test", password: "tester123" }]
-  await withServer(
-    mixed,
-    "demo-user",
-    async (base) => {
-      const res = await fetch(`${base}/api/login`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username: "test", password: "tester123" }),
-      })
-      assert.equal(res.status, 200)
-      assert.deepEqual(await res.json(), { id: "demo-user", username: "test" })
-    },
-    users,
-  )
-})
-
-test("POST /api/login rejects incorrect credentials", async () => {
-  const users: User[] = [{ id: "demo-user", username: "test", password: "tester123" }]
-  await withServer(
-    mixed,
-    "demo-user",
-    async (base) => {
-      const res = await fetch(`${base}/api/login`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username: "test", password: "wrong" }),
-      })
-      assert.equal(res.status, 401)
-      assert.deepEqual(await res.json(), { error: "invalid username or password" })
-    },
-    users,
-  )
 })
 
 test("GET /api/albums/:id decodes the album id", async () => {

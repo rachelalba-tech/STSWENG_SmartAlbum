@@ -121,6 +121,7 @@ As a user I want to add photos to an album so that I can organize my photos into
 
 As a user, I want to remove photos from an album so that I can revise its content without permanently deleting the photos from my library.
 
+- **Status:** Done (PR #17, Joed)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Joed
