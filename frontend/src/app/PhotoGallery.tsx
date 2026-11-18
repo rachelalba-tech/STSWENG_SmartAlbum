@@ -5,7 +5,25 @@ import type { Photo } from "./api.ts"
 
 type GalleryView = "grid" | "single"
 
-export function PhotoGallery({ photos }: { photos: Photo[] }) {
+type PhotoGalleryProps = {
+  photos: Photo[]
+  title?: string
+  subtitle?: string
+  emptyTitle?: string
+  emptyDescription?: string
+  onRemove?: (photoId: string) => void
+  busy?: boolean
+}
+
+export function PhotoGallery({
+  photos,
+  title = "All photos",
+  subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
+  emptyTitle = "No photos yet",
+  emptyDescription = "Upload photos to an album and they will appear here.",
+  onRemove,
+  busy = false,
+}: PhotoGalleryProps) {
   const [view, setView] = useState<GalleryView>("grid")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const safeIndex = Math.min(selectedIndex, Math.max(photos.length - 1, 0))
@@ -14,6 +32,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
     if (view !== "single") return
 
     const moveWithKeyboard = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName))) return
       if (event.key === "ArrowLeft") {
         setSelectedIndex((current) => Math.max(current - 1, 0))
       }
@@ -37,10 +56,8 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
     <section className="pg" aria-labelledby="photos-heading">
       <div className="pg-header">
         <div>
-          <h2 id="photos-heading">All photos</h2>
-          <p className="pg-subtitle">
-            {photos.length} uploaded photo{photos.length === 1 ? "" : "s"}
-          </p>
+          <h2 id="photos-heading">{title}</h2>
+          <p className="pg-subtitle">{subtitle}</p>
         </div>
 
         {photos.length > 0 && (
@@ -70,8 +87,8 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
       {photos.length === 0 ? (
         <div className="pg-empty">
           <Grid3X3 size={32} aria-hidden="true" />
-          <h3>No photos yet</h3>
-          <p>Upload photos to an album and they will appear here.</p>
+          <h3>{emptyTitle}</h3>
+          <p>{emptyDescription}</p>
           <a href="#/upload">Upload photos</a>
         </div>
       ) : view === "grid" ? (
@@ -91,6 +108,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
                 />
                 <span>{photo.title || `Photo ${index + 1}`}</span>
               </button>
+              {onRemove && <button disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
             </li>
           ))}
         </ul>
@@ -131,6 +149,7 @@ export function PhotoGallery({ photos }: { photos: Photo[] }) {
             </button>
           </div>
           <p className="pg-keyboard-hint">Use the arrow keys to browse photos</p>
+          {onRemove && <button disabled={busy} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
         </div>
       )}
     </section>

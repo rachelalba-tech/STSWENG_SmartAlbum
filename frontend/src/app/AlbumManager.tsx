@@ -40,6 +40,7 @@ export interface ManagedAlbum {
 }
 
 interface AlbumManagerProps {
+  canLabel?: boolean
   albums: ManagedAlbum[]
   photos: Photo[]
   onAlbumCreate: (album: ManagedAlbum) => void | Promise<void>
@@ -460,7 +461,7 @@ function SavedCollagesDialog({
 // Main album components 
 
 export function AlbumManager({
-  albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate, onAlbumDelete, collages, onCollageSave, onCollageDelete,
+  albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate, onAlbumDelete, collages, onCollageSave, onCollageDelete, canLabel = true,
 }: AlbumManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState("")
@@ -519,10 +520,10 @@ export function AlbumManager({
           <h2>Photo albums</h2>
           <p className="am-muted">Organize your photos into collections</p>
         </div>
-        <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
+        {canLabel && <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
           <Plus size={16} />
           New album
-        </button>
+        </button>}
       </div>
 
       {error && !isCreateOpen && <p role="alert">{error}</p>}
@@ -567,11 +568,11 @@ export function AlbumManager({
         <div className="am-empty">
           <Folder size={48} />
           <h3>No albums yet</h3>
-          <p className="am-muted">Create your first album to organize your photos</p>
-          <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
+          <p className="am-muted">{canLabel ? "Create your first album to organize your photos" : "Ask an administrator to provision an album for your account."}</p>
+          {canLabel && <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
             <Plus size={16} />
             Create album
-          </button>
+          </button>}
         </div>
       ) : (
         <div className="am-grid">
@@ -631,7 +632,7 @@ export function AlbumManager({
                       )}
                       <CollaboratorsDialog album={album} onUpdate={onAlbumUpdate} />
                       <AlbumCoverDialog album={album} photos={photos} onUpdate={onAlbumUpdate} />
-                      <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />
+                      {canLabel && <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />}
                       <IconButton label="Delete album" danger onClick={() => void handleDelete(album)}>
                         <Trash2 size={14} />
                       </IconButton>

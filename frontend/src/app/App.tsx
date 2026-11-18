@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
-import type { Album, Photo } from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
+import type { Album, Photo, User } from "./api.ts"
+import { LoginPage } from "./LoginPage.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
@@ -31,7 +32,7 @@ const toManaged = (a: Album): ManagedAlbum => ({
   collaborators: [],
 })
 
-function AlbumListRoute() {
+function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -67,6 +68,7 @@ function AlbumListRoute() {
         </p>
       )}
       <AlbumManager
+        canLabel={canLabel}
         albums={albums}
         photos={photos}
         collages={collages}
@@ -98,7 +100,7 @@ function AlbumListRoute() {
   )
 }
 
-function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) {
+function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: boolean; canLabel: boolean }) {
   const [album, setAlbum] = useState<Album | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -168,7 +170,7 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
     <>
       {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage
         album={album} photos={photos} library={library} onRemove={removePhoto}
-        onUpdate={async (title, description) => setAlbum(await updateAlbum(id, title, description))}
+        onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
         onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
         onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
       />}
@@ -249,28 +251,56 @@ function PhotosRoute() {
 }
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<User | null | undefined>(undefined)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let active = true
+    const expired = () => { if (active) setCurrentUser(null) }
+    window.addEventListener("session-expired", expired)
+    fetchSession().then((user) => { if (active) setCurrentUser(user) }, () => {
+      if (active) setAccountError("Could not check your session. Check the API connection and retry.")
+    })
+    return () => { active = false; window.removeEventListener("session-expired", expired) }
+  }, [attempt])
   const hash = useHash()
   const albumId = albumIdFromHash(hash)
   const previewId = previewAlbumIdFromHash(hash)
   const page = albumId || previewId ? "albums" : pageFromHash(hash)
 
+  if (currentUser === undefined) return accountError ? <p role="alert">{accountError} <button onClick={() => {
+    setAccountError(null); setAttempt((n) => n + 1)
+  }}>Retry</button></p> : <p>Checking session…</p>
+  if (!currentUser) return <LoginPage onLogin={(user) => { setAccountError(null); setCurrentUser(user) }} />
+
   return (
     <section id="center">
       <header className="app-header">
         <h1>Smart Photo Album</h1>
+        <div className="app-account">
+          <span>{currentUser.username}</span>
+          <button disabled={loggingOut} onClick={async () => {
+            setLoggingOut(true); setAccountError(null)
+            try { await logout(); setCurrentUser(null) } catch (err) {
+              setAccountError(err instanceof Error ? err.message : "Could not log out")
+            } finally { setLoggingOut(false) }
+          }}>Log out</button>
+        </div>
       </header>
+      {accountError && <p role="alert">{accountError}</p>}
       <AppTabs active={page} />
       {previewId ? (
         // Keyed so switching between album and preview of the same id refetches and remounts.
-        <AlbumRoute key={"preview:" + previewId} id={previewId} preview />
+        <AlbumRoute key={"preview:" + previewId} id={previewId} preview canLabel={currentUser.role === "admin"} />
       ) : albumId ? (
-        <AlbumRoute key={albumId} id={albumId} />
+        <AlbumRoute key={albumId} id={albumId} canLabel={currentUser.role === "admin"} />
       ) : page === "upload" ? (
         <UploadRoute />
       ) : page === "photos" ? (
         <PhotosRoute />
       ) : (
-        <AlbumListRoute />
+        <AlbumListRoute canLabel={currentUser.role === "admin"} />
       )}
     </section>
   )
