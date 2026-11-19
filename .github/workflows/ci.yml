@@ -100,9 +100,16 @@ jobs:
       name: production
     
     steps:
-      - name: Deploy to Render
+      - name: Deploy Backend to Render
         env :
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PROD_DEPLOY_HOOK_URL }}
+          RENDER_BACKEND_DEPLOY_HOOK_URL: ${{ secrets.RENDER_BACKEND_PROD_DEPLOY_HOOK_URL }}
         run: |
           curl --fail --silent --show-error \
-            --request POST "$RENDER_DEPLOY_HOOK_URL"
+            --request POST "$RENDER_BACKEND_DEPLOY_HOOK_URL"
+
+      - name: Deploy Frontend to Render
+        env: 
+          RENDER_FRONTEND_DEPLOY_HOOK_URL: ${{ secrets.RENDER_FRONTEND_PROD_DEPLOY_HOOK_URL }}
+        run: |
+          curl --fail --silent --show-error \
+            --request POST "$RENDER_FRONTEND_DEPLOY_HOOK_URL"
