@@ -367,7 +367,13 @@ export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, us
   let loginWork = 0
   return createServer((req, res) => {
     const origin = req.headers.origin
-    const allowedOrigin = origin === undefined || origin === "https://stsweng-smartalbum-1.onrender.com" ||
+
+    const allowedOrigins = [
+      "https://stsweng-smartalbum-1.onrender.com", //production
+      "https://smartalbum-frontend-staging.onrender.com" //staging
+    ]
+
+    const allowedOrigin = origin === undefined || origin === allowedOrigins.includes(origin) ||
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
     res.setHeader("Vary", "Origin")
     res.setHeader("Cache-Control", "no-store")
