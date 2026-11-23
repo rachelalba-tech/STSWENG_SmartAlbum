@@ -13,7 +13,7 @@
   box-sizing: border-box;
   text-align: left;  
   color: var(--pu-fg);
-  font-size: 14px;
+  font-size: 16px;
 }
 .pu h2 { margin: 0; font-size: 24px; font-weight: 500; color: var(--pu-fg); }
 .pu-sub { margin: 4px 0 24px; color: var(--pu-muted-fg); }
@@ -24,35 +24,17 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
-  font-size: 16px;
+  font-size: 14px;
 }
 .pu-album select {
   height: 36px;
-  padding: 0 32px 0 10px;  
-  border: 1px solid #fff;
-  border-radius: 14px;
-  background: #e7e7e7;
+  padding: 0 10px;
+  border: 1px solid var(--pu-border);
+  border-radius: 8px;
+  background: #f3f3f5;
   font: inherit;
   font-size: 14px;
   color: var(--pu-fg);
-  color-scheme: light;
-  /* caret styling */
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23717182' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); 
-  background-repeat: no-repeat;
-  background-position: right 10px center; 
-  background-size: 12px;
-} 
-
-.pu-album select option {
-  background: #fff;
-  color: var(--pu-fg);
-}
-
-.pu-album select option:hover,
-.pu-album select option:checked {
-  color: var(--pu-primary-fg);
 }
 
 .pu-drop {

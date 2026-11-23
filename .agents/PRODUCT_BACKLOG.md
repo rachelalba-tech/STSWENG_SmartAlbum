@@ -1,9 +1,8 @@
 # PRODUCT BACKLOG
 
-Status audit: 2026-11-13, merged `main` at `af88269`. Pending PRs are not counted as done.
+Status audit: reconciled with `main` (`c7f95d5`, including PRs #23, #24, #26, #27 and #32). Pending PRs are not counted as done.
 Branch implementation updates below are explicitly labelled; they are not yet merged into `main`.
-“Demo identity” means the fixed `demo-user`, not authenticated accounts. Assignees are unchanged.
-No fully completed story is unassigned; US #15's collage-slot dragging is only part of that story.
+Assignees are unchanged. No fully completed story is unassigned; US #15's collage-slot dragging is only part of that story.
 
 ## Photo Album Management
 
@@ -11,7 +10,7 @@ No fully completed story is unassigned; US #15's collage-slot dragging is only p
 
 As a user, I want to create a new photo album so that I can organize and save photos from a particular event
 
-- **Status:** Partial — creation UI updates local state only; no persisted create endpoint. PR #23 contains integration snippets, not runtime implementation.
+- **Status:** Done (PR #23/#27; persistent albums with admin authorization)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt, John
@@ -29,7 +28,7 @@ As a user, I want to create a new photo album so that I can organize and save ph
 
 As a user, I want to delete photo albums that I no longer need so that I can only keep the photo albums I want
 
-- **Status:** Not implemented — delete button has no handler and no API endpoint. PR #23 contains integration snippets only.
+- **Status:** Done (PR #23; deletes album/collages, keeps library photos)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** John
@@ -46,7 +45,7 @@ As a user, I want to delete photo albums that I no longer need so that I can onl
 
 As a user, I want to view all my photo albums in one place so that I can easily find, open, and edit them.
 
-- **Status:** Done (PR #7; demo identity) — owned albums are listed and openable; account authentication is tracked separately in US #26.
+- **Status:** Done (PR #7/#27) — owned albums are listed and openable with session authentication.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Joed
@@ -64,7 +63,7 @@ As a user, I want to view all my photo albums in one place so that I can easily 
 
 As a user I want to edit the order or layout of the pictures in the albums so that I can create a visual story using the pictures
 
-- **Status:** Partial — collage slot order is saved, but album photo reordering is not implemented. PR #23's album-order code is integration snippets only.
+- **Status:** Done (PR #23; persisted drag/button photo order; template layouts are US #21)
 - **Estimate or Story Points:** 3
 - **Priority:** High
 - **Taken by:** John
@@ -91,7 +90,7 @@ AC2: Button labels and edit view are easy to understand and follow
 
 As a user, I want to rename album sections so that their titles describe the pictures they contain.
 
-- **Status:** Partial — title/description form changes local state only; no persisted album update endpoint.
+- **Status:** Partial — album title and description are persisted through `PATCH /api/albums/:id` (PR #23); separate album subsections are not implemented.
 - **Estimate or Story Points:** 3
 - **Priority:** Middle
 - **Taken by:** Alwayne
@@ -114,7 +113,7 @@ AC1: Any changes made to the album title and description is saved
 
 As a user I want to add photos to an album so that I can organize my photos into dedicated albums
 
-- **Status:** Partial — new uploads target an album; this branch adds existing recommended photos through a persisted, ownership-checked API while preserving source albums. A general library picker is not implemented; PR #23 contains other integration snippets only.
+- **Status:** Done (PR #23; persisted library memberships without moving original photos)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** John
@@ -131,7 +130,7 @@ As a user I want to add photos to an album so that I can organize my photos into
 
 As a user, I want to remove photos from an album so that I can revise its content without permanently deleting the photos from my library.
 
-- **Status:** Done (PR #17, Joed; demo identity) — album removal preserves the library record and file, covered by the server test.
+- **Status:** Done (PR #17/#27, Joed) — album removal preserves the library record and file, covered by server and browser tests.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Joed
@@ -148,7 +147,7 @@ As a user, I want to remove photos from an album so that I can revise its conten
 
 As a user, I want to add headlines and descriptions to the albums so that it can give the user an idea of what is happening in the pictures
 
-- **Status:** Partial — local title/description UI exists but changes are not persisted. PR #23 contains integration snippets only.
+- **Status:** Done (PR #23; persisted headline and description)
 - **Estimate or Story Points:** 3
 - **Priority:** Low
 - **Taken by:** John
@@ -170,7 +169,7 @@ AC2: It is easy to understand where to write the album headlines and description
 
 As a user, I want to upload multiple photos at once so that I can quickly add pictures to an album.
 
-- **Status:** Implemented (PR #14, Natt; this branch includes pending PR #26's upload CORS fix and API-origin image resolution; awaiting browser QA/merge) — multi-upload and retry retain the original ownership and size/type checks.
+- **Status:** Done (PR #14, Natt; PR #26 adds CORS `X-File-Name`; PR #32 adds automated real-browser upload, validation and persistence regressions)
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Natt
@@ -187,7 +186,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
-- **Status:** Done (PR #15, Alwayne; demo identity) — grid, single view and keyboard navigation are tested; this branch also resolves uploaded image URLs against the API origin.
+- **Status:** Done (PR #15/#27, Alwayne) — grid, single view, keyboard navigation and album removal are tested; this branch also resolves uploaded image URLs against the API origin.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
@@ -315,7 +314,7 @@ AC2: If the user adds a photo to an album from the curated list made by the syst
 
 As a user, I want to drag and drop photos onto albums so that I can easily design my album
 
-- **Status:** Partial — collage photos can be dragged to swap saved positions (PR #22); dragging library photos onto album pages is not implemented. No assignee; not a fully completed story.
+- **Status:** Partial — collage photos can be dragged to swap saved positions (PR #22) and album photos can be reordered (PR #23); dragging library photos onto album pages is not implemented. No assignee; not a fully completed story.
 - **Estimate or Story Points:** —
 - **Priority:** Low
 - **Taken by:** —
@@ -417,7 +416,7 @@ As a user, I want to apply consistent color grading across my entire album so th
 
 As a user, I want the system to recommend editorial page layouts based on my selected photos so that I can create professional-looking pages quickly
 
-- **Status:** Partial (PR #22, Natt; demo identity/same-origin API) — template selection, count guidance, swaps and saving exist, but `two-over-one` spans beyond its grid and `mosaic` has overlapping cells that can obscure photos. Geometry needs correction before all layouts are reliable; separate-host API routing is addressed in pending PR #26.
+- **Status:** Partial (PR #22/#26, Natt) — template selection, count guidance, swaps, saving and API origin routing exist, but `two-over-one` spans beyond its grid and `mosaic` has overlapping cells that can obscure photos. Geometry needs correction before all layouts are reliable.
 - **Estimate or Story Points:** 5
 - **Priority:** High
 - **Taken by:** Natt
@@ -498,7 +497,7 @@ AC3: The photo collage is looks clear and neat even after exporting
 
 As an admin I want to be able to upload pictures, delete pictures, edit pictures, and create albums so that other people can add pictures into it
 
-- **Status:** Partial — upload and duplicate-library cleanup exist, but admin identity/authorization, persisted album creation and photo editing are not implemented. No assignee.
+- **Status:** Partial — admin login/authorization (PR #27), uploads (PR #14), persisted album creation (PR #23) and duplicate-library cleanup (this branch) exist; photo editing and shared multi-user albums are not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -515,7 +514,7 @@ As an admin I want to be able to upload pictures, delete pictures, edit pictures
 
 As a user I want to be able to add pictures to albums, upload pictures, delete pictures, and edit pictures so that I can also decide on which photos to keep.
 
-- **Status:** Partial — uploads, recommendation-to-album additions, album-only removal and duplicate-library cleanup exist; authenticated standard-user permissions and photo editing are not implemented. No assignee.
+- **Status:** Partial — standard-user login (PR #27), uploads (PR #14), adding/removing album memberships (PR #23/#17) and duplicate-library cleanup (this branch) exist; photo editing is not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -532,8 +531,8 @@ As a user I want to be able to add pictures to albums, upload pictures, delete p
 
 As a user and admin I want to be able to log in to my account using my username and password so that I can see the event pictures
 
-- **Status:** Not implemented on `main` — PR #27 contains a basic login implementation but is pending/conflicting; it is not evidence of completed account authentication.
-- **Estimate or Story Points:** 4
+- **Status:** Done (PR #27; hashed login, server-validated expiring sessions, logout and admin/user authorization; account provisioning remains manual)
+- **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne
 - **Pre-condition:** The user or admin is on the login page.

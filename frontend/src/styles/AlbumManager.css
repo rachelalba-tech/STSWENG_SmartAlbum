@@ -35,10 +35,7 @@
 .am h2 { font-size: 24px; }
 .am h3 { font-size: 18px; margin-bottom: 16px; }
 
-.am-muted { 
-  color: var(--am-muted-fg); 
-  font-size: 14px;
-}
+.am-muted { color: var(--am-muted-fg); }
 
 .am-header {
   display: flex;
@@ -294,11 +291,7 @@
 .am-empty p { margin-bottom: 16px; }
 
 /* Stats */
-.am-stats { 
-  border-top: 1px solid var(--am-border); 
-  padding-top: 24px; 
-  margin-bottom: 50px; 
-}
+.am-stats { border-top: 1px solid var(--am-border); padding-top: 24px; }
 .am-stats-grid {
   display: grid;
   gap: 16px;

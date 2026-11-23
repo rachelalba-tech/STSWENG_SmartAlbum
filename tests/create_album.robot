@@ -1,84 +1,43 @@
 *** Settings ***
-Documentation     Tests for US #1 (create album) and parts of US #3 (view albums).
-...               Written against AlbumManager.tsx.
-Library           SeleniumLibrary
+Documentation     Persistent album creation, validation, and details (US #1/#3/#8).
+Resource          album.resource
 Suite Setup       Open Smart Album
 Suite Teardown    Close All Browsers
 Test Setup        Go To Albums Page
-
-
-*** Variables ***
-# Change ALBUMS_URL to the page that shows "Photo albums".
-# Or leave this and run:  robot -v ALBUMS_URL:http://localhost:5173/albums tests/create_album.robot
-${ALBUMS_URL}         http://localhost:5173
-# Use headlesschrome when running in GitHub Actions (no screen).
-${BROWSER}            chrome
-${NOT_FOUND_TEXT}     not found
-
-# Locators (how Selenium finds things). All taken from AlbumManager.tsx.
-${NEW_ALBUM_BTN}      css:.am-header button.am-btn--primary
-${NAME_INPUT}         id:album-name
-${CREATE_BTN}         xpath://dialog//button[normalize-space()='Create album']
-
+Test Teardown     Run Keyword If Test Failed    Capture Page Screenshot
 
 *** Test Cases ***
-Create Button Is Disabled When Name Is Empty
-    [Documentation]    US #1: an album cannot be created without a title.
-    [Tags]    US-1    create-album
+Create Button Disabled When Name Is Empty
+    [Tags]    US-1
     Open Create Album Dialog
     Element Should Be Disabled    ${CREATE_BTN}
 
-Create Button Is Disabled When Name Is Only Spaces
-    [Documentation]    A title made of spaces should not count as a title.
-    [Tags]    US-1    create-album
+Create Button Disabled When Name Is Only Spaces
+    [Tags]    US-1
     Open Create Album Dialog
     Input Text    ${NAME_INPUT}    ${SPACE}${SPACE}${SPACE}
     Element Should Be Disabled    ${CREATE_BTN}
 
-Created Album Appears In The List
-    [Documentation]    US #1: after submitting a title, the new album is displayed.
-    [Tags]    US-1    create-album
+Created Album Persists And Can Be Opened After Refresh
+    [Tags]    US-1    US-3
     ${name}=    Unique Album Name
     Create Album    ${name}
-    Album Card Should Be Visible    ${name}
-
-Created Album Can Be Opened
-    [Documentation]    US #1 and US #3: the album must be saved and openable.
-    ...                KNOWN BUG: opening a new album shows "album not found".
-    ...                This test is expected to FAIL until the bug is fixed.
-    [Tags]    US-1    US-3    create-album    known-bug
-    ${name}=    Unique Album Name
-    Create Album    ${name}
-    Click Element    css:[aria-label="Open ${name}"]
-    Sleep    1s    # give the page a moment to show an error, if there is one
-    Page Should Not Contain    ${NOT_FOUND_TEXT}
-
-
-*** Keywords ***
-Open Smart Album
-    Open Browser    ${ALBUMS_URL}    ${BROWSER}
-    Set Window Size    1280    900
-
-Go To Albums Page
-    Go To    ${ALBUMS_URL}
-    Wait Until Page Contains    Photo albums
-
-Open Create Album Dialog
-    Click Button    ${NEW_ALBUM_BTN}
-    Wait Until Element Is Visible    ${NAME_INPUT}
-
-Create Album
-    [Arguments]    ${name}
-    Open Create Album Dialog
-    Input Text    ${NAME_INPUT}    ${name}
-    Click Button    ${CREATE_BTN}
-    Wait Until Element Is Not Visible    ${NAME_INPUT}
-
-Album Card Should Be Visible
-    [Arguments]    ${name}
+    Reload Page
     Wait Until Element Is Visible    css:[aria-label="Open ${name}"]
+    Open Album    ${name}
+    Wait Until Page Contains    No photos in this album
+    Capture Page Screenshot    created-album.png
 
-Unique Album Name
-    # A new name each run, so tests never clash with albums from earlier runs.
-    ${stamp}=    Get Time    epoch
-    RETURN    QA Album ${stamp}
+Album Headline And Description Persist
+    [Tags]    US-8
+    ${name}=    Unique Album Name
+    Create Album    ${name}
+    Open Album    ${name}
+    Click Button    xpath://button[normalize-space()='Edit album details']
+    Input Text    css:article.album form input    ${name} renamed
+    Input Text    css:article.album form textarea    Saved description
+    Click Button    xpath://button[normalize-space()='Save details']
+    Wait Until Element Contains    css:article.album h2    ${name} renamed
+    Reload Page
+    Wait Until Element Contains    css:article.album h2    ${name} renamed
+    Wait Until Page Contains    Saved description

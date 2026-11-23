@@ -3,8 +3,20 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
-- 2026-11-13 · feat/joed-duplicate-photos · feat(photos): review exact duplicates and remove explicit selections with ownership, membership, persistence and shared-file safety; compose with recommendation memberships (Joed; US #11; browser QA pending).
-- 2026-11-13 · feat/joed-best-photos · feat(photos): recommend clear photos with bounded pixel analysis and add them to existing owned albums without moving source memberships; reuse pending lint/CORS fixes and resolve API image URLs (Joed; US #14; browser QA pending).
+- 2026-11-23 · feat/joed-duplicate-photos · chore(pr): sync exact duplicate cleanup with merged album CRUD, session auth and browser CI (US #11).
+- 2026-11-23 · feat/joed-best-photos · chore(pr): sync photo recommendations with merged album CRUD, session auth and browser CI (US #14).
+- 2026-11-23 · docs/backlog-completion-audit · docs(backlog): reconcile backlog audit with merged PRs #23, #27 and #32.
+- 2026-11-19 · test/upload-photo · docs(ci): correct live review rules; stale head/merge-base approvals are dismissed, but last-pusher approval is permitted.
+
+- 2026-11-19 · test/upload-photo · test(browser): repair and extend Robot suites; add isolated local API/build harness, persistence checks and CI browser evidence (PR #32; US #1/#2/#3/#4/#6/#7/#8/#9/#10/#21/#26). All 13 Chrome tests pass locally.
+
+- 2026-11-19 · feat/login · fix(auth): replace plaintext/UI-only login with hashed credentials, expiring HTTP-only sessions, session ownership and admin authorization; retain collages and grid/single album removal (PR #27; US #26/#10).
+- 2026-11-19 · John/-US-backend-of-1-2-4-8 · fix(album): load full memberships for album cards and collages instead of deduplicated library entries (PR #23; US #6/#21).
+
+- 2026-11-19 · John/-US-backend-of-1-2-4-8 · fix(album): integrate persistent album CRUD, details, shared-file memberships and saved photo order; preserve library bytes and test ownership/rollback (PR #23; US #1/#2/#4/#6/#8).
+
+- 2026-11-13 · feat/joed-duplicate-photos · feat(photos): review exact duplicates and remove explicit selections with ownership, membership, persistence and shared-file safety; compose with recommendation memberships (Joed; US #11).
+- 2026-11-13 · feat/joed-best-photos · feat(photos): recommend clear photos with bounded pixel analysis and add them to existing owned albums without moving source memberships; resolve API image URLs (Joed; US #14).
 - 2026-11-13 · docs/backlog-completion-audit · docs(backlog): audit all 26 stories against merged code; record partial US #21 layout geometry and upload/deployment gaps, correct US #22 to partial, and record pending PRs without changing assignees. No fully completed unassigned stories found.
 - 2026-11-12 · fix/frontend-lint · fix(frontend): clear the four lint errors so the new CI lint step passes on `main`.
 - 2026-11-12 · fix/collage-api-origin · fix(api): send collage requests to `API_URL` and allow PUT, DELETE and `X-File-Name` in CORS so collages and uploads work against the deployed API.

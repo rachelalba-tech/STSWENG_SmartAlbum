@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { fetchAlbum, fetchAlbums, fetchPhotos, removePhotoFromAlbum } from "./api.ts"
-import type { Album, Photo } from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
+import type { Album, Photo, User } from "./api.ts"
+import { LoginPage } from "./LoginPage.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
 import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
@@ -27,12 +28,12 @@ function useHash() {
 const toManaged = (a: Album): ManagedAlbum => ({
   id: a.id,
   name: a.title,
-  description: "",
+  description: a.description ?? "",
   collaborationEnabled: false,
   collaborators: [],
 })
 
-function AlbumListRoute() {
+function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -40,16 +41,14 @@ function AlbumListRoute() {
 
   useEffect(() => {
     let active = true
-    // Photo counts and covers are a nice-to-have, so a failure here must not hide the albums.
-    fetchPhotos().then(
-      (next) => {
-        if (active) setPhotos(next)
-      },
-      () => {},
-    )
     fetchAlbums().then(
       (next) => {
         if (active) setAlbums(next.map(toManaged))
+        // Collages/counts need every album membership, not the deduplicated library.
+        Promise.all(next.map((album) => fetchPhotos(album.id))).then(
+          (members) => { if (active) setPhotos(members.flat()) },
+          () => {},
+        )
       },
       () => {
         if (active) setError("Could not load albums. Start the server with npm start in server/.")
@@ -70,13 +69,30 @@ function AlbumListRoute() {
         </p>
       )}
       <AlbumManager
+        canLabel={canLabel}
         albums={albums}
         photos={photos}
         collages={collages}
         onCollageSave={save}
         onCollageDelete={remove}
-        onAlbumCreate={(a) => setAlbums((prev) => [...(prev ?? []), a])}
-        onAlbumUpdate={(a) => setAlbums((prev) => (prev ?? []).map((x) => (x.id === a.id ? a : x)))}
+        onAlbumCreate={async (a) => {
+          const saved = await createAlbum(a.name, a.description)
+          setAlbums((prev) => [...(prev ?? []), toManaged(saved)])
+        }}
+        onAlbumUpdate={async (a) => {
+          const current = albums.find((x) => x.id === a.id)
+          if (current?.name !== a.name || current?.description !== a.description) {
+            const saved = await updateAlbum(a.id, a.name, a.description)
+            a = { ...a, name: saved.title, description: saved.description ?? "" }
+          }
+          setAlbums((prev) => (prev ?? []).map((x) => x.id === a.id ? a : x))
+        }}
+        onAlbumDelete={async (id) => {
+          await deleteAlbum(id)
+          setAlbums((prev) => (prev ?? []).filter((a) => a.id !== id))
+          setPhotos((prev) => prev.map((p) => p.albumId === id ? { ...p, albumId: "" } : p))
+          reload()
+        }}
         onAlbumSelect={(id) => {
           window.location.hash = id ? `#/albums/${encodeURIComponent(id)}` : "#/"
         }}
@@ -85,10 +101,11 @@ function AlbumListRoute() {
   )
 }
 
-function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) {
+function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: boolean; canLabel: boolean }) {
   const [album, setAlbum] = useState<Album | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [library, setLibrary] = useState<Photo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -107,8 +124,9 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   }, [id])
 
   async function reloadPhotos() {
-    const next = await fetchPhotos(id)
+    const [next, nextLibrary] = await Promise.all([fetchPhotos(id), fetchPhotos()])
     setPhotos(next)
+    setLibrary(nextLibrary)
     setPhotoError(null)
   }
 
@@ -126,6 +144,14 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
       active = false
     }
   }, [id])
+
+  useEffect(() => {
+    let active = true
+    fetchPhotos().then((next) => { if (active) setLibrary(next) }, () => {
+      if (active) setPhotoError("Could not load the photo library.")
+    })
+    return () => { active = false }
+  }, [])
 
   async function removePhoto(photoId: string) {
     try {
@@ -150,7 +176,12 @@ function AlbumRoute({ id, preview = false }: { id: string; preview?: boolean }) 
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage album={album} photos={photos} onRemove={removePhoto} onPhotosChanged={reloadPhotos} />}
+      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage
+        album={album} photos={photos} library={library} onRemove={removePhoto} onPhotosChanged={reloadPhotos}
+        onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
+        onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
+        onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
+      />}
       {photoError && <p>{photoError}</p>}
     </>
   )
@@ -242,28 +273,56 @@ function PhotosRoute() {
 }
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<User | null | undefined>(undefined)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let active = true
+    const expired = () => { if (active) setCurrentUser(null) }
+    window.addEventListener("session-expired", expired)
+    fetchSession().then((user) => { if (active) setCurrentUser(user) }, () => {
+      if (active) setAccountError("Could not check your session. Check the API connection and retry.")
+    })
+    return () => { active = false; window.removeEventListener("session-expired", expired) }
+  }, [attempt])
   const hash = useHash()
   const albumId = albumIdFromHash(hash)
   const previewId = previewAlbumIdFromHash(hash)
   const page = albumId || previewId ? "albums" : pageFromHash(hash)
 
+  if (currentUser === undefined) return accountError ? <p role="alert">{accountError} <button onClick={() => {
+    setAccountError(null); setAttempt((n) => n + 1)
+  }}>Retry</button></p> : <p>Checking session…</p>
+  if (!currentUser) return <LoginPage onLogin={(user) => { setAccountError(null); setCurrentUser(user) }} />
+
   return (
     <section id="center">
       <header className="app-header">
         <h1>Smart Photo Album</h1>
+        <div className="app-account">
+          <span>{currentUser.username}</span>
+          <button disabled={loggingOut} onClick={async () => {
+            setLoggingOut(true); setAccountError(null)
+            try { await logout(); setCurrentUser(null) } catch (err) {
+              setAccountError(err instanceof Error ? err.message : "Could not log out")
+            } finally { setLoggingOut(false) }
+          }}>Log out</button>
+        </div>
       </header>
+      {accountError && <p role="alert">{accountError}</p>}
       <AppTabs active={page} />
       {previewId ? (
         // Keyed so switching between album and preview of the same id refetches and remounts.
-        <AlbumRoute key={"preview:" + previewId} id={previewId} preview />
+        <AlbumRoute key={"preview:" + previewId} id={previewId} preview canLabel={currentUser.role === "admin"} />
       ) : albumId ? (
-        <AlbumRoute key={albumId} id={albumId} />
+        <AlbumRoute key={albumId} id={albumId} canLabel={currentUser.role === "admin"} />
       ) : page === "upload" ? (
         <UploadRoute />
       ) : page === "photos" ? (
         <PhotosRoute />
       ) : (
-        <AlbumListRoute />
+        <AlbumListRoute canLabel={currentUser.role === "admin"} />
       )}
     </section>
   )

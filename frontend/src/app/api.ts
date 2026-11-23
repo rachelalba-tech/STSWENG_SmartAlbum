@@ -1,9 +1,51 @@
-export const API_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, "");
+export const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "")
+
+export type User = { id: string; username: string; role: "admin" | "user" }
+
+export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, { ...init, credentials: "include" })
+  if (res.status === 401) window.dispatchEvent(new Event("session-expired"))
+  return res
+}
+
+function parseUser(value: unknown): User | null {
+  if (typeof value !== "object" || value === null) return null
+  const user = value as Record<string, unknown>
+  return typeof user.id === "string" && user.id !== "" && typeof user.username === "string" &&
+    (user.role === "admin" || user.role === "user") ? { id: user.id, username: user.username, role: user.role } : null
+}
+
+export async function login(username: string, password: string): Promise<User> {
+  const res = await apiFetch(`${API_URL}/api/login`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password }),
+  })
+  if (res.status === 401) throw new Error("Incorrect username or password")
+  if (res.status === 429) throw new Error("Too many sign-in attempts. Wait one minute and try again.")
+  if (!res.ok) throw new Error("Could not sign in")
+  const user = parseUser(await res.json())
+  if (!user) throw new Error("Could not sign in: unexpected response")
+  return user
+}
+
+export async function fetchSession(): Promise<User | null> {
+  const res = await apiFetch(`${API_URL}/api/session`)
+  if (res.status === 401) return null
+  if (!res.ok) throw new Error("Could not check session")
+  const user = parseUser(await res.json())
+  if (!user) throw new Error("Could not check session")
+  return user
+}
+
+export async function logout(): Promise<void> {
+  const res = await apiFetch(`${API_URL}/api/logout`, { method: "POST" })
+  if (!res.ok) throw new Error("Could not log out. Try again.")
+}
 
 export type Album = {
   id: string
   title: string
   ownerId: string
+  description?: string
 }
 
 export type Photo = {
@@ -28,7 +70,8 @@ function isAlbum(value: unknown): value is Album {
     typeof album.id === "string" &&
     album.id !== "" &&
     typeof album.title === "string" &&
-    typeof album.ownerId === "string"
+    typeof album.ownerId === "string" &&
+    (album.description === undefined || typeof album.description === "string")
   )
 }
 
@@ -56,7 +99,7 @@ function parsePhoto(value: unknown): Photo | null {
 }
 
 export async function fetchAlbums(): Promise<Album[]> {
-  const res = await fetch(`${API_URL}/api/albums`)
+  const res = await apiFetch(`${API_URL}/api/albums`)
   if (!res.ok) throw new Error("Could not load albums")
   const body: unknown = await res.json()
   if (!Array.isArray(body) || !body.every(isAlbum)) throw new Error("Could not load albums")
@@ -64,7 +107,7 @@ export async function fetchAlbums(): Promise<Album[]> {
 }
 
 export async function fetchAlbum(id: string): Promise<Album> {
-  const res = await fetch(`${API_URL}/api/albums/${encodeURIComponent(id)}`)
+  const res = await apiFetch(`${API_URL}/api/albums/${encodeURIComponent(id)}`)
   if (res.status === 404) throw new Error("Album not found")
   if (!res.ok) throw new Error("Could not open album")
   const body: unknown = await res.json()
@@ -76,7 +119,7 @@ export async function fetchAlbum(id: string): Promise<Album> {
 // GET /api/photos?albumId=ID -> photos of one album
 export async function fetchPhotos(albumId?: string): Promise<Photo[]> {
   const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
-  const res = await fetch(`${API_URL}/api/photos${query}`)
+  const res = await apiFetch(`${API_URL}/api/photos${query}`)
   if (!res.ok) throw new Error("Could not load photos")
   const body: unknown = await res.json()
   if (!Array.isArray(body)) throw new Error("Could not load photos")
@@ -110,7 +153,7 @@ async function duplicateError(res: Response): Promise<Error> {
 
 export async function fetchDuplicateGroups(albumId?: string): Promise<DuplicateGroup[]> {
   const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
-  const res = await fetch(`${API_URL}/api/photos/duplicates${query}`)
+  const res = await apiFetch(`${API_URL}/api/photos/duplicates${query}`)
   if (!res.ok) throw await duplicateError(res)
   const body: unknown = await res.json()
   if (!Array.isArray(body)) throw new Error("Unexpected duplicate response")
@@ -121,12 +164,12 @@ export async function fetchDuplicateGroups(albumId?: string): Promise<DuplicateG
 
 export async function removeDuplicatePhoto(photoId: string, albumId?: string): Promise<void> {
   const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
-  const res = await fetch(`${API_URL}/api/photos/duplicates/${encodeURIComponent(photoId)}${query}`, { method: "DELETE" })
+  const res = await apiFetch(`${API_URL}/api/photos/duplicates/${encodeURIComponent(photoId)}${query}`, { method: "DELETE" })
   if (!res.ok) throw await duplicateError(res)
 }
 
 export async function removeDuplicatePhotos(albumId: string | undefined, photoIds: string[]): Promise<void> {
-  const res = await fetch(`${API_URL}/api/photos/duplicates/delete`, {
+  const res = await apiFetch(`${API_URL}/api/photos/duplicates/delete`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ...(albumId ? { albumId } : {}), photoIds }),
@@ -137,7 +180,7 @@ export async function removeDuplicatePhotos(albumId: string | undefined, photoId
 // POST /api/albums/:id/photos
 // Errors for image type, photo size, and failed upload 
 export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
-  const res = await fetch(`${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`, {
+  const res = await apiFetch(`${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`, {
     method: "POST",
     headers: { "content-type": file.type, "x-file-name": encodeURIComponent(file.name) },
     body: file,
@@ -153,7 +196,7 @@ export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
 // DELETE /api/albums/:albumId/photos/:photoId
 // The file stays in the library. Only the album link is cleared.
 export async function removePhotoFromAlbum(albumId: string, photoId: string): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos/${encodeURIComponent(photoId)}`,
     { method: "DELETE" },
   )
@@ -161,18 +204,45 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string): Pr
   if (!res.ok) throw new Error("Could not remove photo")
 }
 
-// PATCH /api/albums/:id/photos keeps the source album link and adds a second membership.
-export async function addPhotosToAlbum(albumId: string, photoIds: string[]): Promise<Photo[]> {
-  const res = await fetch(API_URL + "/api/albums/" + encodeURIComponent(albumId) + "/photos", {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ photoIds }),
+export async function createAlbum(title: string, description = ""): Promise<Album> {
+  return writeAlbum("", "POST", title, description)
+}
+
+export async function updateAlbum(id: string, title: string, description: string): Promise<Album> {
+  return writeAlbum(`/${encodeURIComponent(id)}`, "PATCH", title, description)
+}
+
+async function writeAlbum(path: string, method: string, title: string, description: string): Promise<Album> {
+  const res = await apiFetch(`${API_URL}/api/albums${path}`, {
+    method, headers: { "content-type": "application/json" }, body: JSON.stringify({ title, description }),
   })
-  if (res.status === 404) throw new Error("Album or photo not found")
-  if (!res.ok) throw new Error("Could not add photo to album. Try again.")
+  if (!res.ok) throw new Error(`Could not save album (${res.status})`)
+  const album: unknown = await res.json()
+  if (!isAlbum(album)) throw new Error("Could not save album: unexpected response")
+  return album
+}
+
+export async function deleteAlbum(id: string): Promise<void> {
+  const res = await apiFetch(`${API_URL}/api/albums/${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`Could not delete album (${res.status})`)
+}
+
+export async function addPhotosToAlbum(id: string, photoIds: string[]): Promise<Photo[]> {
+  return writePhotos(id, "", photoIds)
+}
+
+export async function reorderAlbumPhotos(id: string, photoIds: string[]): Promise<Photo[]> {
+  return writePhotos(id, "/order", photoIds)
+}
+
+async function writePhotos(id: string, path: string, photoIds: string[]): Promise<Photo[]> {
+  const res = await apiFetch(`${API_URL}/api/albums/${encodeURIComponent(id)}/photos${path}`, {
+    method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ photoIds }),
+  })
+  if (!res.ok) throw new Error(`Could not save album photos (${res.status})`)
   const body: unknown = await res.json()
-  if (!Array.isArray(body)) throw new Error("Could not add photo to album. Try again.")
+  if (!Array.isArray(body)) throw new Error("Unexpected photo response")
   const photos = body.map(parsePhoto)
-  if (photos.some((photo) => photo === null)) throw new Error("Could not add photo to album. Try again.")
+  if (photos.some((p) => !p)) throw new Error("Unexpected photo response")
   return photos as Photo[]
 }
