@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum, saveRotatedPhoto} from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, saveRotatedPhoto, updateAlbum } from "./api.ts"
 import type { Album, Photo, User } from "./api.ts"
 import { LoginPage } from "./LoginPage.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
@@ -31,6 +31,14 @@ const toManaged = (a: Album): ManagedAlbum => ({
   collaborationEnabled: false,
   collaborators: [],
 })
+
+function replaceRotatedPhoto(photos: Photo[], previousSrc: string, saved: Photo): Photo[] {
+  return photos.map((p) =>
+    p.id === saved.id || p.src === previousSrc
+      ? { ...p, src: saved.src, thumbnail: saved.thumbnail }
+      : p,
+  )
+}
 
 function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
@@ -175,9 +183,8 @@ function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: b
         onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
         onRotate={async (photo, degrees) => {
           const saved = await saveRotatedPhoto(photo, degrees)
-          const swap = (p: Photo): Photo => p.src === photo.src ? { ...p, src: saved.src, thumbnail: saved.thumbnail } : p
-          setPhotos((prev) => prev.map(swap))
-          setLibrary((prev) => prev && prev.map(swap))
+          setPhotos((prev) => replaceRotatedPhoto(prev, photo.src, saved))
+          setLibrary((prev) => (prev ? replaceRotatedPhoto(prev, photo.src, saved) : prev))
         }}
       />}
       {photoError && <p>{photoError}</p>}
@@ -258,7 +265,7 @@ function PhotosRoute() {
       photos={photos}
       onSaveRotation={async (photo, degrees) => {
         const saved = await saveRotatedPhoto(photo, degrees)
-        setPhotos((prev) => (prev ?? []).map((p) => p.src === photo.src ? { ...p, src: saved.src, thumbnail: saved.thumbnail } : p))
+        setPhotos((prev) => (prev ? replaceRotatedPhoto(prev, photo.src, saved) : prev))
       }}
     />
   )

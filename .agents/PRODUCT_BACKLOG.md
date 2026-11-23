@@ -344,6 +344,7 @@ As a user, I want to crop photos within album pages so that I do not need to use
 
 As a user I want to rotate photos within the application so that I do not need to use a separate app to make edits
 
+- **Status:** Done (90° counter-clockwise/clockwise rotation in single-photo view with save and revert, persisted via `PUT /api/photos/:id/image`)
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —

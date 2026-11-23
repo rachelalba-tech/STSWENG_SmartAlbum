@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, Grid3X3, Maximize2, RotateCcw, RotateCw } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Grid3X3, Maximize2, RotateCcw, RotateCw, Undo2 } from "lucide-react"
 import "../styles/PhotoGallery.css"
 import type { Photo } from "./api.ts"
 
@@ -12,8 +12,15 @@ type PhotoGalleryProps = {
   emptyTitle?: string
   emptyDescription?: string
   onRemove?: (photoId: string) => void
-  busy?: boolean
   onSaveRotation?: (photo: Photo, degrees: number) => Promise<void>
+  busy?: boolean
+}
+
+function describeRotation(netDegrees: number): string {
+  if (netDegrees === 90) return "Rotated 90° clockwise"
+  if (netDegrees === 180) return "Rotated 180°"
+  if (netDegrees === 270) return "Rotated 90° counter-clockwise"
+  return ""
 }
 
 export function PhotoGallery({
@@ -23,66 +30,92 @@ export function PhotoGallery({
   emptyTitle = "No photos yet",
   emptyDescription = "Upload photos to an album and they will appear here.",
   onRemove,
-  busy = false,
   onSaveRotation,
+  busy = false,
 }: PhotoGalleryProps) {
   const [view, setView] = useState<GalleryView>("grid")
   const [selectedIndex, setSelectedIndex] = useState(0)
-  
   const [rotations, setRotations] = useState<Record<string, number>>({})
   const [savingRotation, setSavingRotation] = useState(false)
   const [rotationError, setRotationError] = useState<string | null>(null)
-
-  const rotate = (key: string, delta: 90 | -90) =>
-  setRotations((current) => ({ ...current, [key]: (current[key] ?? 0) + delta }))
-
+  const [rotationSavedId, setRotationSavedId] = useState<string | null>(null)
   const safeIndex = Math.min(selectedIndex, Math.max(photos.length - 1, 0))
 
+  const goToIndex = (updater: number | ((current: number) => number)) => {
+    setRotationError(null)
+    setRotationSavedId(null)
+    setSelectedIndex(updater)
+  }
+
   useEffect(() => {
-    if (view !== "single") return
+    if (view !== "single" || savingRotation) return
 
     const moveWithKeyboard = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName))) return
       if (event.key === "ArrowLeft") {
+        setRotationError(null)
+        setRotationSavedId(null)
         setSelectedIndex((current) => Math.max(current - 1, 0))
       }
       if (event.key === "ArrowRight") {
+        setRotationError(null)
+        setRotationSavedId(null)
         setSelectedIndex((current) => Math.min(current + 1, photos.length - 1))
       }
     }
 
     window.addEventListener("keydown", moveWithKeyboard)
     return () => window.removeEventListener("keydown", moveWithKeyboard)
-  }, [photos.length, view])
+  }, [photos.length, savingRotation, view])
 
   const openPhoto = (index: number) => {
-    setSelectedIndex(index)
+    goToIndex(index)
     setView("single")
   }
 
   const selected = photos[safeIndex]
+  const angle = selected ? (rotations[selected.id] ?? 0) : 0
+  const netDegrees = ((((angle / 90) % 4) + 4) % 4) * 90
+  const sideways = netDegrees === 90 || netDegrees === 270
+  const hasPendingRotation = netDegrees !== 0
 
-  const angle = selected ? (rotations[selected.src] ?? 0) : 0
-  const sideways = Math.abs(angle / 90) % 2 === 1
-  const rotated = angle % 360 !== 0
+  const rotateSelected = (delta: 90 | -90) => {
+    if (!selected || savingRotation) return
+    setRotationError(null)
+    setRotationSavedId(null)
+    setRotations((current) => ({ ...current, [selected.id]: (current[selected.id] ?? 0) + delta }))
+  }
 
-  const saveRotation = async () => {
-    if (!onSaveRotation || !selected || savingRotation) return
+  const handleRevertRotation = () => {
+    if (!selected || savingRotation) return
+    setRotationError(null)
+    setRotationSavedId(null)
+    setRotations((current) => {
+      const next = { ...current }
+      delete next[selected.id]
+      return next
+    })
+  }
+
+  const handleSaveRotation = async () => {
+    if (!onSaveRotation || !selected || !hasPendingRotation || savingRotation) return
+    const target = selected
     setSavingRotation(true)
     setRotationError(null)
+    setRotationSavedId(null)
     try {
-      await onSaveRotation(selected, angle)
+      await onSaveRotation(target, netDegrees)
+      setRotations((current) => {
+        const next = { ...current }
+        delete next[target.id]
+        return next
+      })
+      setRotationSavedId(target.id)
     } catch (err) {
       setRotationError(err instanceof Error ? err.message : "Could not save the rotated photo.")
     } finally {
       setSavingRotation(false)
     }
-  }
-
-  const discardRotation = () => {
-    if (!selected) return
-    setRotationError(null)
-    setRotations((current) => ({ ...current, [selected.src]: 0 }))
   }
 
   return (
@@ -99,6 +132,7 @@ export function PhotoGallery({
               type="button"
               className={`pg-view-button${view === "grid" ? " is-active" : ""}`}
               aria-pressed={view === "grid"}
+              disabled={savingRotation}
               onClick={() => setView("grid")}
             >
               <Grid3X3 size={17} aria-hidden="true" />
@@ -108,6 +142,7 @@ export function PhotoGallery({
               type="button"
               className={`pg-view-button${view === "single" ? " is-active" : ""}`}
               aria-pressed={view === "single"}
+              disabled={savingRotation}
               onClick={() => setView("single")}
             >
               <Maximize2 size={17} aria-hidden="true" />
@@ -141,88 +176,115 @@ export function PhotoGallery({
                 />
                 <span>{photo.title || `Photo ${index + 1}`}</span>
               </button>
-              {onRemove && <button className="pg-remove" disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
+              {onRemove && <button disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
             </li>
           ))}
         </ul>
       ) : (
         <div className="pg-single" aria-live="polite">
           <div className="pg-stage">
+            <div className="pg-rotate-tools" role="group" aria-label="Rotate photo">
+              <button
+                type="button"
+                className="pg-rotate pg-rotate--ccw"
+                aria-label="Rotate counter-clockwise"
+                title="Rotate counter-clockwise (90°)"
+                disabled={savingRotation}
+                onClick={() => rotateSelected(-90)}
+              >
+                <RotateCcw size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="pg-rotate pg-rotate--cw"
+                aria-label="Rotate clockwise"
+                title="Rotate clockwise (90°)"
+                disabled={savingRotation}
+                onClick={() => rotateSelected(90)}
+              >
+                <RotateCw size={18} aria-hidden="true" />
+              </button>
+            </div>
+
             <button
               type="button"
               className="pg-arrow"
               aria-label="Previous photo"
-              disabled={safeIndex === 0}
-              onClick={() => setSelectedIndex(safeIndex - 1)}
+              disabled={safeIndex === 0 || savingRotation}
+              onClick={() => goToIndex(safeIndex - 1)}
             >
               <ChevronLeft size={26} aria-hidden="true" />
             </button>
 
-          <figure className="pg-figure">
-            <div className="pg-frame">
-              <div className="pg-rotate-tools" role="group" aria-label="Rotate photo">
-                <button
-                  type="button"
-                  className="pg-rotate pg-rotate--ccw"
-                  aria-label="Rotate counterclockwise"
-                  title="Rotate counterclockwise"
-                  disabled={savingRotation}
-                  onClick={() => rotate(selected.src, -90)}
-                >
-                  <RotateCcw size={18} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="pg-rotate pg-rotate--cw"
-                  aria-label="Rotate clockwise"
-                  title="Rotate clockwise"
-                  disabled={savingRotation}
-                  onClick={() => rotate(selected.src, 90)}
-                >
-                  <RotateCw size={18} aria-hidden="true" />
-                </button>
+            <figure className="pg-figure">
+              <div className="pg-frame">
+                <img
+                  key={selected.src}
+                  className={`pg-photo${sideways ? " is-sideways" : ""}`}
+                  src={selected.src}
+                  alt={selected.title || `Photo ${safeIndex + 1}`}
+                  style={{ transform: `translate(-50%, -50%) rotate(${angle}deg)` }}
+                />
               </div>
-              <img
-                key={selected.src}
-                className={`pg-photo${sideways ? " is-sideways" : ""}`}
-                src={selected.src}
-                alt={selected.title || `Photo ${safeIndex + 1}`}
-                style={{ transform: `translate(-50%, -50%) rotate(${angle}deg)` }}
-              />
-            </div>
-            
-            {onSaveRotation && rotated && (
-              <div className="pg-rotate-actions">
-                <button type="button" className="pg-rotate-btn pg-rotate-btn--primary" disabled={savingRotation} onClick={() => void saveRotation()}>
-                  {savingRotation ? "Saving…" : "Save rotation"}
-                </button>
-                <button type="button" className="pg-rotate-btn" disabled={savingRotation} onClick={discardRotation}>
-                  Discard rotation
-                </button>
-              </div>
-            )}
-            {rotationError && <p role="alert" className="pg-rotate-error">{rotationError}</p>}
 
-            <figcaption>
-              <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
-              <span>
-                {safeIndex + 1} of {photos.length}
-              </span>
-            </figcaption>
-          </figure>
+              {hasPendingRotation && (
+                <div className="pg-rotate-actions" role="group" aria-label="Rotation changes">
+                  <span className="pg-rotate-label">{describeRotation(netDegrees)}</span>
+                  {onSaveRotation && (
+                    <button
+                      type="button"
+                      className="pg-rotate-btn pg-rotate-btn--primary"
+                      disabled={savingRotation}
+                      onClick={() => void handleSaveRotation()}
+                    >
+                      <Check size={15} aria-hidden="true" />
+                      {savingRotation ? "Saving…" : "Save changes"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="pg-rotate-btn pg-rotate-btn--revert"
+                    disabled={savingRotation}
+                    onClick={handleRevertRotation}
+                  >
+                    <Undo2 size={15} aria-hidden="true" />
+                    Revert
+                  </button>
+                </div>
+              )}
+
+              {rotationError && (
+                <p role="alert" className="pg-rotate-error">
+                  {rotationError}
+                </p>
+              )}
+
+              {rotationSavedId === selected.id && !hasPendingRotation && !rotationError && (
+                <p role="status" className="pg-rotate-status">
+                  Rotation saved
+                </p>
+              )}
+
+              <figcaption>
+                <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
+                <span>
+                  {safeIndex + 1} of {photos.length}
+                </span>
+              </figcaption>
+            </figure>
 
             <button
               type="button"
               className="pg-arrow"
               aria-label="Next photo"
-              disabled={safeIndex === photos.length - 1}
-              onClick={() => setSelectedIndex(safeIndex + 1)}
+              disabled={safeIndex === photos.length - 1 || savingRotation}
+              onClick={() => goToIndex(safeIndex + 1)}
             >
               <ChevronRight size={26} aria-hidden="true" />
             </button>
           </div>
           <p className="pg-keyboard-hint">Use the arrow keys to browse photos</p>
-          {onRemove && <button className="pg-remove" disabled={busy} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
+          {onRemove && <button disabled={busy || savingRotation} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
         </div>
       )}
     </section>

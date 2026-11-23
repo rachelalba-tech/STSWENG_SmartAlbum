@@ -193,37 +193,75 @@ async function writePhotos(id: string, path: string, photoIds: string[]): Promis
   return photos as Photo[]
 }
 
-const ROTATED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const CANVAS_OUTPUT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 
-async function rotateBlob(source: Blob, degrees: number): Promise<Blob> {
-  const turns = (((degrees / 90) % 4) + 4) % 4
-  const bitmap = await createImageBitmap(source)
+type DecodedImage = {
+  source: CanvasImageSource
+  width: number
+  height: number
+  close: () => void
+}
+
+function decodeImageBlob(source: Blob): Promise<DecodedImage> {
+  if (typeof createImageBitmap === "function") {
+    return createImageBitmap(source).then((bitmap) => ({
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      close: () => bitmap.close(),
+    }))
+  }
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(source)
+    const img = new Image()
+    img.onload = () => resolve({
+      source: img,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      close: () => URL.revokeObjectURL(url),
+    })
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("Could not decode the photo to rotate it"))
+    }
+    img.src = url
+  })
+}
+
+export async function rotateImageBlob(source: Blob, degrees: number): Promise<Blob> {
+  const turns = (((Math.round(degrees / 90)) % 4) + 4) % 4
+  if (turns === 0) return source
+  const decoded = await decodeImageBlob(source)
   try {
     const sideways = turns % 2 === 1
     const canvas = document.createElement("canvas")
-    canvas.width = sideways ? bitmap.height : bitmap.width
-    canvas.height = sideways ? bitmap.width : bitmap.height
+    canvas.width = sideways ? decoded.height : decoded.width
+    canvas.height = sideways ? decoded.width : decoded.height
     const ctx = canvas.getContext("2d")
     if (!ctx) throw new Error("Could not rotate the photo")
     ctx.translate(canvas.width / 2, canvas.height / 2)
     ctx.rotate((turns * Math.PI) / 2)
-    ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2)
-    const type = ROTATED_TYPES.includes(source.type) ? source.type : "image/png"
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92))
+    ctx.drawImage(decoded.source, -decoded.width / 2, -decoded.height / 2)
+    const preferredType = CANVAS_OUTPUT_TYPES.has(source.type) ? source.type : "image/png"
+    const encode = (mime: string, quality?: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, quality))
+    let blob = await encode(preferredType, preferredType === "image/png" ? undefined : 0.92)
+    if (!blob && preferredType !== "image/png") blob = await encode("image/png")
     if (!blob) throw new Error("Could not rotate the photo")
     return blob
   } finally {
-    bitmap.close()
+    decoded.close()
   }
 }
 
 export async function saveRotatedPhoto(photo: Photo, degrees: number): Promise<Photo> {
   const original = await apiFetch(photo.src)
   if (!original.ok) throw new Error("Could not load the photo to rotate it")
-  const rotated = await rotateBlob(await original.blob(), degrees)
+  const rotated = await rotateImageBlob(await original.blob(), degrees)
+  const contentType = rotated.type || "image/png"
   const res = await apiFetch(`${API_URL}/api/photos/${encodeURIComponent(photo.id)}/image`, {
     method: "PUT",
-    headers: { "content-type": rotated.type },
+    headers: { "content-type": contentType },
     body: rotated,
   })
   if (res.status === 413) throw new Error("The rotated photo is too large to save (10 MB limit)")

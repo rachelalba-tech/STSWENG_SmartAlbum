@@ -360,6 +360,7 @@ async function handleReplaceImage(
     send(res, 404, { error: "photo not found" })
     return
   }
+
   const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase()
   const ext = IMAGE_TYPES[contentType]
   if (!ext) {
@@ -373,6 +374,7 @@ async function handleReplaceImage(
     send(res, 413, { error: "photo too large" })
     return
   }
+
   const body = await readBody(req, MAX_PHOTO_BYTES)
   if (body === null) {
     send(res, 413, { error: "photo too large" })
@@ -387,15 +389,16 @@ async function handleReplaceImage(
   const newUrl = `/api/uploads/${newFile}`
   await writeFile(join(storage.uploadsDir, newFile), body)
 
-  // Re-read after the await: the photo may have changed while the body was written.
+  // Re-check after async file write in case the photo changed concurrently.
   const target = storage.photos.find((p) => p.id === photoId && p.ownerId === ownerId)
   if (!target) {
     await unlink(join(storage.uploadsDir, newFile)).catch(() => {})
     send(res, 404, { error: "photo not found" })
     return
   }
+
   const oldFile = target.file
-  // Every membership of this physical file moves to the new bytes together.
+  // Every album membership sharing this physical file moves to the updated bytes together.
   const siblings = storage.photos.filter((p) => p.ownerId === ownerId && p.file === oldFile)
   const previous = siblings.map((p) => ({ p, file: p.file, src: p.src, thumbnail: p.thumbnail }))
   for (const p of siblings) {
@@ -414,7 +417,9 @@ async function handleReplaceImage(
     await unlink(join(storage.uploadsDir, newFile)).catch(() => {})
     throw err
   }
-  await unlink(join(storage.uploadsDir, oldFile)).catch(() => {})
+  if (!storage.photos.some((p) => p.file === oldFile)) {
+    await unlink(join(storage.uploadsDir, oldFile)).catch(() => {})
+  }
   send(res, 200, toPublic(target))
 }
 

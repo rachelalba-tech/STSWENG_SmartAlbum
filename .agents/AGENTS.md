@@ -51,7 +51,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   The album page shows the title, a link back, and that
   album's photos, with a control to take a photo out of that album. Upload sends several JPG, PNG,
   GIF, or WebP files (10 MB each) to an album the API already has (US #9, Natt, PR #14). The gallery
-  toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
+  toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15), and
+  provides 90° counter-clockwise/clockwise rotation buttons in the top right of the single-view stage
+  border with Save changes and Revert controls that persist rotated image bytes through the API (US #17).
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json` and `server/data/photos.json`, and creates
@@ -60,7 +62,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
   owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
-  and leaves the file in the library (US #7, Joed). Albums have `id`, `title`, `ownerId` and optional `description`.
+  and leaves the file in the library (US #7, Joed). `PUT /api/photos/:id/image` replaces an owned
+  photo's stored image file across all shared memberships, persists the update with rollback on save
+  error, and cleans up the replaced file (US #17). Albums have `id`, `title`, `ownerId` and optional `description`.
   `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
   Albums also have an optional `description`. `PATCH /api/albums/:id/photos` adds immutable-file
   memberships; `PATCH /api/albums/:id/photos/order` validates and saves an exact permutation.
@@ -79,8 +83,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   allowed browsers are the deployed frontend and loopback HTTP. HTTPS cookies use SameSite=None
   and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
   The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
-  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo editing,
-  export and photo analysis are not implemented. Template collages and saved-collage editing are
+  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping,
+  color grading, export and photo analysis are not implemented. Template collages and saved-collage editing are
   implemented (PR #22; US #21). Collaboration and album cover selection remain page-local prototypes.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,

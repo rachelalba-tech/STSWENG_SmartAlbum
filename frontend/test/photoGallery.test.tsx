@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import { expect, test } from "vitest"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { expect, test, vi } from "vitest"
 import type { Photo } from "../src/app/api.ts"
 import { PhotoGallery } from "../src/app/PhotoGallery.tsx"
 
@@ -81,34 +81,87 @@ test("shows an upload path when the gallery is empty", () => {
   expect(screen.getByRole("link", { name: "Upload photos" }).getAttribute("href")).toBe("#/upload")
 })
 
-test("single view offers rotate buttons that turn the photo a quarter turn", () => {
-  render(<PhotoGallery photos={photos} />)
+test("single view shows counter-clockwise and clockwise rotate buttons in the stage border and allows reverting", () => {
+  render(<PhotoGallery photos={photos} onSaveRotation={vi.fn()} />)
+
+  expect(screen.queryByRole("button", { name: "Rotate counter-clockwise" })).toBeNull()
   expect(screen.queryByRole("button", { name: "Rotate clockwise" })).toBeNull()
 
   fireEvent.click(screen.getByRole("button", { name: "Single" }))
+
+  const stage = document.querySelector(".pg-stage")
+  const ccw = screen.getByRole("button", { name: "Rotate counter-clockwise" })
+  const cw = screen.getByRole("button", { name: "Rotate clockwise" })
+  expect(stage?.contains(ccw)).toBe(true)
+  expect(stage?.contains(cw)).toBe(true)
+
   const img = () => screen.getByRole("img", { name: "First photo" }) as HTMLImageElement
 
-  fireEvent.click(screen.getByRole("button", { name: "Rotate clockwise" }))
-  expect(img().style.transform).toBe("rotate(90deg)")
+  fireEvent.click(cw)
+  expect(img().style.transform).toBe("translate(-50%, -50%) rotate(90deg)")
+  expect(img().className).toContain("is-sideways")
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy()
+  expect(screen.getByRole("button", { name: "Revert" })).toBeTruthy()
+
+  fireEvent.click(ccw)
+  fireEvent.click(ccw)
+  expect(img().style.transform).toBe("translate(-50%, -50%) rotate(-90deg)")
   expect(img().className).toContain("is-sideways")
 
-  fireEvent.click(screen.getByRole("button", { name: "Rotate counterclockwise" }))
-  fireEvent.click(screen.getByRole("button", { name: "Rotate counterclockwise" }))
-  expect(img().style.transform).toBe("rotate(-90deg)")
-
-  fireEvent.click(screen.getByRole("button", { name: "Rotate counterclockwise" }))
-  expect(img().style.transform).toBe("rotate(-180deg)")
+  fireEvent.click(ccw)
+  expect(img().style.transform).toBe("translate(-50%, -50%) rotate(-180deg)")
   expect(img().className).not.toContain("is-sideways")
+
+  fireEvent.click(screen.getByRole("button", { name: "Revert" }))
+  expect(img().style.transform).toBe("translate(-50%, -50%) rotate(0deg)")
+  expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull()
+  expect(screen.queryByRole("button", { name: "Revert" })).toBeNull()
 })
 
-test("each photo keeps its own rotation while browsing", () => {
-  render(<PhotoGallery photos={photos} />)
+test("rotating a full circle clears pending changes without requiring revert", () => {
+  render(<PhotoGallery photos={photos} onSaveRotation={vi.fn()} />)
+  fireEvent.click(screen.getByRole("button", { name: "Single" }))
+  const cw = screen.getByRole("button", { name: "Rotate clockwise" })
+
+  for (let i = 0; i < 4; i++) fireEvent.click(cw)
+  expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull()
+  expect(screen.queryByRole("button", { name: "Revert" })).toBeNull()
+})
+
+test("saving a rotation calls onSaveRotation with normalized degrees and resets pending state", async () => {
+  let resolveSave!: () => void
+  const onSaveRotation = vi.fn(() => new Promise<void>((resolve) => { resolveSave = resolve }))
+  render(<PhotoGallery photos={photos} onSaveRotation={onSaveRotation} />)
+
+  fireEvent.click(screen.getByRole("button", { name: "Single" }))
+  fireEvent.click(screen.getByRole("button", { name: "Rotate counter-clockwise" }))
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
+
+  expect(onSaveRotation).toHaveBeenCalledWith(photos[0], 270)
+  expect((screen.getByRole("button", { name: "Saving…" }) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getByRole("button", { name: "Rotate clockwise" }) as HTMLButtonElement).disabled).toBe(true)
+
+  resolveSave()
+  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Rotation saved"))
+  expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull()
+  expect((screen.getByRole("img", { name: "First photo" }) as HTMLImageElement).style.transform).toBe(
+    "translate(-50%, -50%) rotate(0deg)",
+  )
+})
+
+test("failed rotation save keeps pending orientation and shows an error for retry or revert", async () => {
+  const onSaveRotation = vi.fn().mockRejectedValue(new Error("Server unavailable"))
+  render(<PhotoGallery photos={photos} onSaveRotation={onSaveRotation} />)
+
   fireEvent.click(screen.getByRole("button", { name: "Single" }))
   fireEvent.click(screen.getByRole("button", { name: "Rotate clockwise" }))
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
 
-  fireEvent.click(screen.getByRole("button", { name: "Next photo" }))
-  expect((screen.getByRole("img", { name: "Second photo" }) as HTMLImageElement).style.transform).toBe("rotate(0deg)")
-
-  fireEvent.click(screen.getByRole("button", { name: "Previous photo" }))
-  expect((screen.getByRole("img", { name: "First photo" }) as HTMLImageElement).style.transform).toBe("rotate(90deg)")
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Server unavailable"))
+  expect((screen.getByRole("img", { name: "First photo" }) as HTMLImageElement).style.transform).toBe(
+    "translate(-50%, -50%) rotate(90deg)",
+  )
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy()
+  fireEvent.click(screen.getByRole("button", { name: "Revert" }))
+  expect(screen.queryByRole("alert")).toBeNull()
 })

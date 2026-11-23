@@ -59,6 +59,7 @@ test("all data routes reject unauthenticated and forged identities", async () =>
       assert.equal((await fetch(base + route, { headers: { cookie: "smart-album-session=" + "a".repeat(64), "x-user-id": "admin" } })).status, 401)
     }
     assert.equal((await fetch(base + "/api/albums", json({ title: "Bypass", ownerId: "admin" }))).status, 401)
+    assert.equal((await fetch(base + "/api/photos/p/image", { method: "PUT", headers: { "content-type": "image/png" }, body: new Uint8Array([1, 2]) })).status, 401)
     for (const body of [null, [], {}, { username: 1, password: "x" }, { username: "admin", password: "x".repeat(1025) }]) {
       assert.equal((await fetch(base + "/api/login", json(body))).status, 400)
     }
@@ -97,8 +98,13 @@ test("ownership comes from sessions, and only admins create or label albums", as
     assert.deepEqual((await (await fetch(base + "/api/albums", { headers })).json()).map((a: { id: string }) => a.id), ["m"])
     for (const route of ["/api/albums/a", "/api/uploads/private.png"]) assert.equal((await fetch(base + route, { headers })).status, 404)
     assert.equal((await fetch(base + "/api/collages/c", { method: "DELETE", headers })).status, 404)
+    assert.equal((await fetch(base + "/api/photos/p/image", { method: "PUT", headers: { ...headers, "content-type": "image/png" }, body: new Uint8Array([1, 2]) })).status, 404)
+    const memberUpload = await fetch(base + "/api/albums/m/photos", { method: "POST", headers: { ...headers, "content-type": "image/png", "x-file-name": "mine.png" }, body: new Uint8Array([1, 2, 3]) })
+    assert.equal(memberUpload.status, 201)
+    const memberPhoto = await memberUpload.json()
+    assert.equal((await fetch(base + `/api/photos/${memberPhoto.id}/image`, { method: "PUT", headers: { ...headers, "content-type": "image/png" }, body: new Uint8Array([4, 5, 6]) })).status, 200)
     assert.deepEqual(await (await fetch(base + "/api/collages", { headers })).json(), [])
-    assert.deepEqual(await (await fetch(base + "/api/photos", { headers })).json(), [])
+    assert.equal((await (await fetch(base + "/api/photos", { headers })).json()).length, 1)
     for (const [route, method] of [["/api/albums", "POST"], ["/api/albums/m", "PATCH"]]) {
       assert.equal((await fetch(base + route, { ...json({ title: "Fake", ownerId: "admin", role: "admin" }), method, headers: { ...headers, "content-type": "application/json" } })).status, 403)
     }

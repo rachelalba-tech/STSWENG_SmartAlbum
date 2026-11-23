@@ -3,6 +3,8 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-23 · feat/rotate-photo · feat(photos): add 90° counter-clockwise/clockwise rotation controls with save and revert in single-photo view and persist rotated image files via `PUT /api/photos/:id/image` (US #17).
+
 - 2026-11-19 · test/upload-photo · docs(ci): correct live review rules; stale head/merge-base approvals are dismissed, but last-pusher approval is permitted.
 
 - 2026-11-19 · test/upload-photo · test(browser): repair and extend Robot suites; add isolated local API/build harness, persistence checks and CI browser evidence (PR #32; US #1/#2/#3/#4/#6/#7/#8/#9/#10/#21/#26). All 13 Chrome tests pass locally.
@@ -27,4 +29,3 @@ This file logs meaningful changes, with the newest entry first. Each entry follo
 - 2026-10-26 · docs/agents-context · docs(agents): set up `.agents/` context. Added `AGENTS.md` and
   this file, root `AGENTS.md` and `CLAUDE.md` pointers to them, a gitignored per-lab `PLAN.md`
   handoff file, and a rule that agents never credit themselves.
-- 2026-11-23 · feat/rotate-photo · feat(photos): add clockwise/counterclockwise rotate buttons to the single-photo view; view-only, not persisted (US #17).
