@@ -1,0 +1,7 @@
+Feature: Reorder Album Photos
+Included snippets:
+- frontend/AlbumPage.reorder.snippet.tsx
+- frontend/api.reorderPhotos.snippet.ts
+- frontend/App.reorder-integration.snippet.tsx
+- backend/http.reorderPhotos-route.snippet.ts
+- backend/photo-order-support.snippet.ts

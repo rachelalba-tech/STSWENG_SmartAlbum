@@ -44,8 +44,11 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 - **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Entry point is
   `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. Hash routes: album list
   (`#/`), album page (`#/albums/:id`), upload (`#/upload`), and all-photos gallery (`#/photos`).
-  The list is the album manager. Creating or editing an album there changes only the open page;
-  the server does not save new albums. The album page shows the title, a link back, and that
+  The list is the album manager. Creating, renaming and deleting albums persist through the API
+  (PR #23; US #1/#2/#8). Album deletion keeps image files in the library and removes saved collages.
+  The album page supports editing its headline/description, adding library photos without moving
+  them out of other albums, and drag/button reordering with an explicit save (US #4/#6/#8).
+  The album page shows the title, a link back, and that
   album's photos, with a control to take a photo out of that album. Upload sends several JPG, PNG,
   GIF, or WebP files (10 MB each) to an album the API already has (US #9, Natt, PR #14). The gallery
   toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
@@ -57,43 +60,65 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
   owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
-  and leaves the file in the library (US #7, Joed). Albums contain only `id`, `title` and `ownerId`.
-  There is no album create or album delete endpoint.
-- **Collages (US #21, PR #22):** the album manager selects exact-count templates, explains unsupported
-  photo counts, and supports pointer/keyboard slot swaps. Named template/order drafts are persisted
-  through `GET/POST /api/collages` and `PUT/DELETE /api/collages/:id`, ownership-checked by the server.
-  Saved collages can be reopened and edited. US #21 remains partial: `two-over-one` overflows its
-  declared grid and `mosaic` overlaps cells, so some layouts can obscure photos. Slot dragging covers
-  part, not all, of unassigned US #15.
-- **Identity and remaining features:** `server/src/current-user.ts` fixes every request to
-  `demo-user`; login and admin/user roles are not implemented (US #26, #24, #25). Photo editing,
-  export and photo analysis are not implemented. Collage layouts exist, but album photo reordering does not.
+  and leaves the file in the library (US #7, Joed). Albums have `id`, `title`, `ownerId` and optional `description`.
+  `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
+  `PATCH /api/albums/:id/photos` adds immutable-file memberships; `PATCH /api/albums/:id/photos/order`
+  validates and saves an exact permutation. The library lists each physical file once; album lists sort
+  by optional persisted `position`. Album cards and collage controls load each album's full membership
+  list, including shared-file copies. Collages are persisted in `server/data/collages.json` through
+  `GET/POST/PUT/DELETE /api/collages`, ownership-checked by the server; US #21 remains partial because
+  `two-over-one` overflows its declared grid and `mosaic` overlaps cells. Saves use temporary files and
+  atomic renames. Album deletion rolls back completed store writes on errors, but a process crash
+  between JSON-file writes is not a database transaction.
+- **Identity and remaining features:** runtime loads hashed users from `server/data/users.json`.
+  `POST /api/login` validates scrypt hashes and issues an 8-hour HTTP-only session cookie;
+  `GET /api/session` restores the server identity and `POST /api/logout` revokes it (PR #27; US #26).
+  All data routes require a session and derive ownership from it, not client IDs/localStorage.
+  Only admins create and label albums; the UI hides these controls for regular users.
+  Sessions are process-local (restart signs everyone out), capped at 1000; login has bounded
+  hashing concurrency and a 20-attempt/IP/minute limit. Cross-origin mutations are checked;
+  allowed browsers are the deployed frontend and loopback HTTP. HTTPS cookies use SameSite=None
+  and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
+  The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
+  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo editing,
+  export and photo analysis are not implemented. Template collages and saved-collage editing are
+  implemented (PR #22; US #21, partial pending template geometry fixes). Collaboration and album cover
+  selection remain page-local prototypes.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
   hash parsing, upload selection and retry, the gallery grid/single view, and collage templates,
-  editing, saved-collage resolution and API behavior (93 tests at the 2026-11-13 audit). They do not call
+  editing, saved-collage resolution and API behavior. They do not call
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
-  album without deleting the file. Photo upload and serving have no server tests. The server
-  test script names both files explicitly; there is no separate server type-check or build script.
-- **CI:** `.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, on Node 22.
-  Frontend job: `npm ci`, `npm run lint`, `npm test`, `npm run build` (test/build currently repeated).
-  Server job: `npm test`. Both jobs run for every PR; there are no path filters or cancellation of
-  outdated runs. Formatting and end-to-end tests are not in CI. PR-title validation, automatic labeling, dependency updates and
+  album without deleting the file. `server/test/album-writes.test.ts` covers persistent album CRUD,
+  membership/order validation, ownership and failed-save rollback. Frontend editing tests cover
+  asynchronous save failures, details, adding photos and accessible reordering.
+  Authentication tests cover hashed credentials, session rotation/expiry/logout, origin/rate limits,
+  admin authorization, ownership isolation, forged localStorage, credentialed requests and gallery removal.
+  The server test script discovers `test/*.test.ts`; there is no separate server type-check/build.
+- **CI:** `.github/workflows/ci.yml` runs on pull requests and pushes to `main`, on Node 22. Frontend job:
+  `npm ci`, `npm run lint`, `npm test`, `npm run build`.
+  Server job: `npm test`. Browser job: Python 3.12, pinned Robot/Selenium dependencies,
+  headless Chrome against a built frontend and disposable loopback API; reports, screenshots and
+  API request logs are uploaded even on failure (PR #32). All three jobs run for every PR; there
+  are no path filters or cancellation of outdated runs. Formatting,
+  PR-title validation, automatic labeling, dependency updates and
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
-  and force pushes for everyone and requires a PR with one approval from someone other than the
-  last pusher; a new push dismisses earlier approvals. Lint has six existing errors on audited `main`
-  in `AlbumManager.tsx`, `App.tsx`, `PhotoUpload.tsx`, `collageApi.ts`, and `useCollages.ts`; pending PR #24 fixes them.
-- **Formatter / end-to-end tests:** neither is configured.
+  and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
+  Stale approvals are dismissed when the head or merge base changes; approval by someone other than
+  the last pusher is not required by the live ruleset.
+- **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
+  creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
+  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
+  `tests/run-browser.mjs` builds with a forced local API, creates disposable JSON/upload stores,
+  checks persisted photo bytes, and closes servers/removes its stores after success or failure.
+  Original image fixtures and their ZIP remain unchanged; WebP fixture casing is `sample.WEBP`.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
   `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
   read-only page with no controls inside it. It does not render saved collage layouts, so US #22
-  remains partial against export-parity AC2. Export is not implemented. `frontend/test/albumPreview.test.tsx` covers the existing photo-list view.
-- **Pending PRs (2026-11-13):** #23 adds US #1/#2/#4/#6/#8 integration snippets, not runtime endpoints;
-  #24 fixes baseline lint; #26 fixes collage API origin and upload CORS; #27 adds basic login but
-  conflicts and removes saved-collage wiring. None is counted as merged story completion.
-  Separate-host photo URLs still need API-origin resolution.
+  remains partial against export-parity AC2; export (US #23) is not yet implemented.
+  `frontend/test/albumPreview.test.tsx` covers the existing photo-list view.
 
 ## Commands
 
@@ -121,16 +146,26 @@ npm run build      # tsc -b && vite build
 npm run preview    # http://localhost:4173 — preview the built frontend
 
 # server/
-npm test           # node --experimental-strip-types --test test/albums.test.ts test/photos.test.ts
+npm test           # node --experimental-strip-types --test test/*.test.ts
 ```
 
-Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy). The
-current proxy targets the deployed API, **not** local port 3000; `VITE_API_URL` also selects the
-API request origin. Do not use the production proxy for tests that mutate photos or collages.
-Use an isolated local API/proxy and temporary data. The static build itself does not include a proxy.
+Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
+both dev and preview forward `/api` to port 3000 and need the local API running (`VITE_API_URL` can
+override the API request origin). Do not point mutating tests at a production API; use an isolated
+local API and temporary data. The static build itself does not include a proxy.
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
-`server/`, `npm test` must pass. When a formatter is added, add it here too.
+`server/`, `npm test` must pass. From the root, browser suites must pass:
+
+```bash
+python -m pip install -r tests/requirements.txt
+node --experimental-strip-types tests/run-browser.mjs
+```
+
+Requires Node 22, Python 3.12+ and installed Chrome; Selenium Manager supplies the driver.
+Pass the Python executable as the harness's first argument (or `ROBOT_PYTHON`) for a virtual
+environment. Use the harness, not a deployed API: it overrides `.env` API settings and uses
+isolated stores. Results are in ignored `tests/results/`. When a formatter is added, add it here too.
 
 ## Rules (from `PROPOSAL.md`, with a documentation-only exception)
 
