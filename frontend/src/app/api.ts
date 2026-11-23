@@ -192,3 +192,43 @@ async function writePhotos(id: string, path: string, photoIds: string[]): Promis
   if (photos.some((p) => !p)) throw new Error("Unexpected photo response")
   return photos as Photo[]
 }
+
+const ROTATED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+async function rotateBlob(source: Blob, degrees: number): Promise<Blob> {
+  const turns = (((degrees / 90) % 4) + 4) % 4
+  const bitmap = await createImageBitmap(source)
+  try {
+    const sideways = turns % 2 === 1
+    const canvas = document.createElement("canvas")
+    canvas.width = sideways ? bitmap.height : bitmap.width
+    canvas.height = sideways ? bitmap.width : bitmap.height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Could not rotate the photo")
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+    ctx.rotate((turns * Math.PI) / 2)
+    ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2)
+    const type = ROTATED_TYPES.includes(source.type) ? source.type : "image/png"
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92))
+    if (!blob) throw new Error("Could not rotate the photo")
+    return blob
+  } finally {
+    bitmap.close()
+  }
+}
+
+export async function saveRotatedPhoto(photo: Photo, degrees: number): Promise<Photo> {
+  const original = await apiFetch(photo.src)
+  if (!original.ok) throw new Error("Could not load the photo to rotate it")
+  const rotated = await rotateBlob(await original.blob(), degrees)
+  const res = await apiFetch(`${API_URL}/api/photos/${encodeURIComponent(photo.id)}/image`, {
+    method: "PUT",
+    headers: { "content-type": rotated.type },
+    body: rotated,
+  })
+  if (res.status === 413) throw new Error("The rotated photo is too large to save (10 MB limit)")
+  if (!res.ok) throw new Error(`Could not save the rotated photo (${res.status})`)
+  const saved = parsePhoto(await res.json())
+  if (!saved) throw new Error("Could not save the rotated photo: unexpected response")
+  return saved
+}

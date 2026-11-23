@@ -27,3 +27,4 @@ This file logs meaningful changes, with the newest entry first. Each entry follo
 - 2026-10-26 · docs/agents-context · docs(agents): set up `.agents/` context. Added `AGENTS.md` and
   this file, root `AGENTS.md` and `CLAUDE.md` pointers to them, a gitignored per-lab `PLAN.md`
   handoff file, and a rule that agents never credit themselves.
+- 2026-11-23 · feat/rotate-photo · feat(photos): add clockwise/counterclockwise rotate buttons to the single-photo view; view-only, not persisted (US #17).

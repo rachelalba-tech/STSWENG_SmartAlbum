@@ -343,6 +343,81 @@ function handleDetach(
   res.end()
 }
 
+async function handleReplaceImage(
+  req: IncomingMessage,
+  res: ServerResponse,
+  ownerId: string,
+  photoId: string,
+  storage: PhotoStorage | undefined,
+) {
+  if (!storage) {
+    req.resume()
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  if (!storage.photos.some((p) => p.id === photoId && p.ownerId === ownerId)) {
+    req.resume()
+    send(res, 404, { error: "photo not found" })
+    return
+  }
+  const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase()
+  const ext = IMAGE_TYPES[contentType]
+  if (!ext) {
+    req.resume()
+    send(res, 415, { error: "unsupported image type" })
+    return
+  }
+  const declared = Number(req.headers["content-length"])
+  if (Number.isFinite(declared) && declared > MAX_PHOTO_BYTES) {
+    req.resume()
+    send(res, 413, { error: "photo too large" })
+    return
+  }
+  const body = await readBody(req, MAX_PHOTO_BYTES)
+  if (body === null) {
+    send(res, 413, { error: "photo too large" })
+    return
+  }
+  if (body.length === 0) {
+    send(res, 400, { error: "empty upload" })
+    return
+  }
+
+  const newFile = `${randomUUID()}${ext}`
+  const newUrl = `/api/uploads/${newFile}`
+  await writeFile(join(storage.uploadsDir, newFile), body)
+
+  // Re-read after the await: the photo may have changed while the body was written.
+  const target = storage.photos.find((p) => p.id === photoId && p.ownerId === ownerId)
+  if (!target) {
+    await unlink(join(storage.uploadsDir, newFile)).catch(() => {})
+    send(res, 404, { error: "photo not found" })
+    return
+  }
+  const oldFile = target.file
+  // Every membership of this physical file moves to the new bytes together.
+  const siblings = storage.photos.filter((p) => p.ownerId === ownerId && p.file === oldFile)
+  const previous = siblings.map((p) => ({ p, file: p.file, src: p.src, thumbnail: p.thumbnail }))
+  for (const p of siblings) {
+    p.file = newFile
+    p.src = newUrl
+    p.thumbnail = newUrl
+  }
+  try {
+    storage.save(storage.photos)
+  } catch (err) {
+    for (const item of previous) {
+      item.p.file = item.file
+      item.p.src = item.src
+      item.p.thumbnail = item.thumbnail
+    }
+    await unlink(join(storage.uploadsDir, newFile)).catch(() => {})
+    throw err
+  }
+  await unlink(join(storage.uploadsDir, oldFile)).catch(() => {})
+  send(res, 200, toPublic(target))
+}
+
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
   const photo = storage?.photos.find((p) => p.file === file && p.ownerId === ownerId)
   if (!storage || !photo) {
@@ -597,6 +672,18 @@ export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, us
       } catch (err) {
         fail(err)
       }
+      return
+    }
+
+    const photoImage = url.pathname.match(/^\/api\/photos\/([^/]+)\/image$/)
+    if (photoImage && req.method === "PUT") {
+      const photoId = safeDecode(photoImage[1])
+      if (photoId === null) {
+        req.resume()
+        send(res, 400, { error: "bad photo id" })
+        return
+      }
+      handleReplaceImage(req, res, ownerId, photoId, photoStorage).catch(fail)
       return
     }
 

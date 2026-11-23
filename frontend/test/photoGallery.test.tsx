@@ -80,3 +80,35 @@ test("shows an upload path when the gallery is empty", () => {
   expect(screen.getByText("No photos yet")).toBeTruthy()
   expect(screen.getByRole("link", { name: "Upload photos" }).getAttribute("href")).toBe("#/upload")
 })
+
+test("single view offers rotate buttons that turn the photo a quarter turn", () => {
+  render(<PhotoGallery photos={photos} />)
+  expect(screen.queryByRole("button", { name: "Rotate clockwise" })).toBeNull()
+
+  fireEvent.click(screen.getByRole("button", { name: "Single" }))
+  const img = () => screen.getByRole("img", { name: "First photo" }) as HTMLImageElement
+
+  fireEvent.click(screen.getByRole("button", { name: "Rotate clockwise" }))
+  expect(img().style.transform).toBe("rotate(90deg)")
+  expect(img().className).toContain("is-sideways")
+
+  fireEvent.click(screen.getByRole("button", { name: "Rotate counterclockwise" }))
+  fireEvent.click(screen.getByRole("button", { name: "Rotate counterclockwise" }))
+  expect(img().style.transform).toBe("rotate(-90deg)")
+
+  fireEvent.click(screen.getByRole("button", { name: "Rotate counterclockwise" }))
+  expect(img().style.transform).toBe("rotate(-180deg)")
+  expect(img().className).not.toContain("is-sideways")
+})
+
+test("each photo keeps its own rotation while browsing", () => {
+  render(<PhotoGallery photos={photos} />)
+  fireEvent.click(screen.getByRole("button", { name: "Single" }))
+  fireEvent.click(screen.getByRole("button", { name: "Rotate clockwise" }))
+
+  fireEvent.click(screen.getByRole("button", { name: "Next photo" }))
+  expect((screen.getByRole("img", { name: "Second photo" }) as HTMLImageElement).style.transform).toBe("rotate(0deg)")
+
+  fireEvent.click(screen.getByRole("button", { name: "Previous photo" }))
+  expect((screen.getByRole("img", { name: "First photo" }) as HTMLImageElement).style.transform).toBe("rotate(90deg)")
+})

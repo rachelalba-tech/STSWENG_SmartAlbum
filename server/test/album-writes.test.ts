@@ -138,3 +138,23 @@ test("uploads persist and serve exact bytes, rejecting empty/foreign/unsupported
     assert.equal((await fetch(`${base}/api/albums/foreign/photos`, { method: "POST", headers: { "content-type": "image/png" }, body: bytes })).status, 404)
   })
 })
+
+test("replacing a photo image swaps the file, persists it, and rejects foreign or bad requests", async () => {
+  await fixture(async ({ base, photosFile, uploads }) => {
+    const bytes = new Uint8Array([255, 216, 255, 224])
+    const put = (id: string, init: RequestInit) => fetch(`${base}/api/photos/${id}/image`, { method: "PUT", ...init })
+
+    const res = await put("one", { headers: { "content-type": "image/jpeg" }, body: bytes })
+    assert.equal(res.status, 200)
+    const updated = await res.json()
+    assert.ok(updated.src.endsWith(".jpg"))
+    assert.notEqual(updated.src, "/api/uploads/one.png")
+    assert.equal(existsSync(join(uploads, "one.png")), false)
+    assert.deepEqual(new Uint8Array(await (await fetch(base + updated.src)).arrayBuffer()), bytes)
+    assert.equal(loadPhotos(photosFile).find((p) => p.id === "one")?.src, updated.src)
+
+    assert.equal((await put("private", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 404)
+    assert.equal((await put("two", { body: "x" })).status, 415)
+    assert.equal((await put("two", { headers: { "content-type": "image/png" } })).status, 400)
+  })
+})

@@ -197,6 +197,10 @@
   width: 100%;
 }
 
+.album--gallery .back {
+  display: inline-block;
+}
+
 .album-preview-link {
   display: inline-block;
   margin-bottom: 18px;
@@ -266,4 +270,78 @@
     right: 0;
     border-right-color: var(--border);
   }
+}
+
+.album > button,
+.album form > button,
+.album fieldset > button,
+.album .photos button {
+  margin: 0 8px 12px 0;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: 700 13px/1 var(--sans);
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.album > button:hover:not(:disabled),
+.album form > button:hover:not(:disabled),
+.album fieldset > button:hover:not(:disabled),
+.album .photos button:hover:not(:disabled) {
+  background: var(--social-bg);
+  box-shadow: var(--shadow);
+}
+
+.album > button:focus-visible,
+.album form > button:focus-visible,
+.album fieldset > button:focus-visible,
+.album .photos button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.album > button:disabled,
+.album form > button:disabled,
+.album fieldset > button:disabled,
+.album .photos button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pg-remove {
+  display: block;
+  margin: 8px auto 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: #9f1239;
+  font: 700 12px/1.2 var(--sans);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.pg-remove:hover:not(:disabled) {
+  background: #fff1f2;
+}
+
+.pg-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pg-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pg-grid .pg-remove {
+  width: 100%;
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

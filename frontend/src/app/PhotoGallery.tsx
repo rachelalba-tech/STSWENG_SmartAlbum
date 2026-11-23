@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, Grid3X3, Maximize2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Grid3X3, Maximize2, RotateCcw, RotateCw } from "lucide-react"
 import "../styles/PhotoGallery.css"
 import type { Photo } from "./api.ts"
 
@@ -13,6 +13,7 @@ type PhotoGalleryProps = {
   emptyDescription?: string
   onRemove?: (photoId: string) => void
   busy?: boolean
+  onSaveRotation?: (photo: Photo, degrees: number) => Promise<void>
 }
 
 export function PhotoGallery({
@@ -23,9 +24,18 @@ export function PhotoGallery({
   emptyDescription = "Upload photos to an album and they will appear here.",
   onRemove,
   busy = false,
+  onSaveRotation,
 }: PhotoGalleryProps) {
   const [view, setView] = useState<GalleryView>("grid")
   const [selectedIndex, setSelectedIndex] = useState(0)
+  
+  const [rotations, setRotations] = useState<Record<string, number>>({})
+  const [savingRotation, setSavingRotation] = useState(false)
+  const [rotationError, setRotationError] = useState<string | null>(null)
+
+  const rotate = (key: string, delta: 90 | -90) =>
+  setRotations((current) => ({ ...current, [key]: (current[key] ?? 0) + delta }))
+
   const safeIndex = Math.min(selectedIndex, Math.max(photos.length - 1, 0))
 
   useEffect(() => {
@@ -51,6 +61,29 @@ export function PhotoGallery({
   }
 
   const selected = photos[safeIndex]
+
+  const angle = selected ? (rotations[selected.src] ?? 0) : 0
+  const sideways = Math.abs(angle / 90) % 2 === 1
+  const rotated = angle % 360 !== 0
+
+  const saveRotation = async () => {
+    if (!onSaveRotation || !selected || savingRotation) return
+    setSavingRotation(true)
+    setRotationError(null)
+    try {
+      await onSaveRotation(selected, angle)
+    } catch (err) {
+      setRotationError(err instanceof Error ? err.message : "Could not save the rotated photo.")
+    } finally {
+      setSavingRotation(false)
+    }
+  }
+
+  const discardRotation = () => {
+    if (!selected) return
+    setRotationError(null)
+    setRotations((current) => ({ ...current, [selected.src]: 0 }))
+  }
 
   return (
     <section className="pg" aria-labelledby="photos-heading">
@@ -108,7 +141,7 @@ export function PhotoGallery({
                 />
                 <span>{photo.title || `Photo ${index + 1}`}</span>
               </button>
-              {onRemove && <button disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
+              {onRemove && <button className="pg-remove" disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
             </li>
           ))}
         </ul>
@@ -125,18 +158,58 @@ export function PhotoGallery({
               <ChevronLeft size={26} aria-hidden="true" />
             </button>
 
-            <figure className="pg-figure">
+          <figure className="pg-figure">
+            <div className="pg-frame">
+              <div className="pg-rotate-tools" role="group" aria-label="Rotate photo">
+                <button
+                  type="button"
+                  className="pg-rotate pg-rotate--ccw"
+                  aria-label="Rotate counterclockwise"
+                  title="Rotate counterclockwise"
+                  disabled={savingRotation}
+                  onClick={() => rotate(selected.src, -90)}
+                >
+                  <RotateCcw size={18} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="pg-rotate pg-rotate--cw"
+                  aria-label="Rotate clockwise"
+                  title="Rotate clockwise"
+                  disabled={savingRotation}
+                  onClick={() => rotate(selected.src, 90)}
+                >
+                  <RotateCw size={18} aria-hidden="true" />
+                </button>
+              </div>
               <img
+                key={selected.src}
+                className={`pg-photo${sideways ? " is-sideways" : ""}`}
                 src={selected.src}
                 alt={selected.title || `Photo ${safeIndex + 1}`}
+                style={{ transform: `translate(-50%, -50%) rotate(${angle}deg)` }}
               />
-              <figcaption>
-                <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
-                <span>
-                  {safeIndex + 1} of {photos.length}
-                </span>
-              </figcaption>
-            </figure>
+            </div>
+            
+            {onSaveRotation && rotated && (
+              <div className="pg-rotate-actions">
+                <button type="button" className="pg-rotate-btn pg-rotate-btn--primary" disabled={savingRotation} onClick={() => void saveRotation()}>
+                  {savingRotation ? "Saving…" : "Save rotation"}
+                </button>
+                <button type="button" className="pg-rotate-btn" disabled={savingRotation} onClick={discardRotation}>
+                  Discard rotation
+                </button>
+              </div>
+            )}
+            {rotationError && <p role="alert" className="pg-rotate-error">{rotationError}</p>}
+
+            <figcaption>
+              <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
+              <span>
+                {safeIndex + 1} of {photos.length}
+              </span>
+            </figcaption>
+          </figure>
 
             <button
               type="button"
@@ -149,7 +222,7 @@ export function PhotoGallery({
             </button>
           </div>
           <p className="pg-keyboard-hint">Use the arrow keys to browse photos</p>
-          {onRemove && <button disabled={busy} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
+          {onRemove && <button className="pg-remove" disabled={busy} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
         </div>
       )}
     </section>

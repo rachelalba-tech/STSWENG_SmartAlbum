@@ -89,6 +89,8 @@ AC2: Button labels and edit view are easy to understand and follow
 
 As a user, I want to rename album sections so that their titles describe the pictures they contain.
 
+- **Status:** Done (PR #27)
+
 - **Estimate or Story Points:** 3
 - **Priority:** Middle
 - **Taken by:** Alwayne

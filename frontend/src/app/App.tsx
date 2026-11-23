@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum, saveRotatedPhoto} from "./api.ts"
 import type { Album, Photo, User } from "./api.ts"
 import { LoginPage } from "./LoginPage.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
@@ -173,6 +173,12 @@ function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: b
         onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
         onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
         onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
+        onRotate={async (photo, degrees) => {
+          const saved = await saveRotatedPhoto(photo, degrees)
+          const swap = (p: Photo): Photo => p.src === photo.src ? { ...p, src: saved.src, thumbnail: saved.thumbnail } : p
+          setPhotos((prev) => prev.map(swap))
+          setLibrary((prev) => prev && prev.map(swap))
+        }}
       />}
       {photoError && <p>{photoError}</p>}
     </>
@@ -247,7 +253,15 @@ function PhotosRoute() {
 
   if (error) return <p>{error}</p>
   if (!photos) return <p>Loading photos…</p>
-  return <PhotoGallery photos={photos} />
+  return (
+    <PhotoGallery
+      photos={photos}
+      onSaveRotation={async (photo, degrees) => {
+        const saved = await saveRotatedPhoto(photo, degrees)
+        setPhotos((prev) => (prev ?? []).map((p) => p.src === photo.src ? { ...p, src: saved.src, thumbnail: saved.thumbnail } : p))
+      }}
+    />
+  )
 }
 
 export default function App() {
