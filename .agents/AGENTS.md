@@ -54,7 +54,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
-  and loads `server/data/albums.json` and `server/data/photos.json`, and creates
+  and loads `server/data/albums.json`, `server/data/photos.json` and `server/data/collages.json`, and creates
   `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
   `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
   `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
@@ -62,13 +62,14 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
   and leaves the file in the library (US #7, Joed). Albums have `id`, `title`, `ownerId` and optional `description`.
   `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
-  Albums also have an optional `description`. `PATCH /api/albums/:id/photos` adds immutable-file
-  memberships; `PATCH /api/albums/:id/photos/order` validates and saves an exact permutation.
-  The library lists each physical file once; album lists sort by optional persisted `position`.
-  Album cards and collage controls load each album's full membership list, including shared-file copies.
-  Collages are persisted in `server/data/collages.json` through GET/POST/PUT/DELETE `/api/collages`.
-  Saves use temporary files and atomic renames. Album deletion rolls back completed store writes
-  on errors, but a process crash between JSON-file writes is not a database transaction.
+  `PATCH /api/albums/:id/photos` adds immutable-file memberships; `PATCH /api/albums/:id/photos/order`
+  validates and saves an exact permutation. The library lists each physical file once; album lists sort
+  by optional persisted `position`. Album cards and collage controls load each album's full membership
+  list, including shared-file copies. Collages are persisted in `server/data/collages.json` through
+  `GET/POST/PUT/DELETE /api/collages`, ownership-checked by the server; US #21 remains partial because
+  `two-over-one` overflows its declared grid and `mosaic` overlaps cells. Saves use temporary files and
+  atomic renames. Album deletion rolls back completed store writes on errors, but a process crash
+  between JSON-file writes is not a database transaction.
 - **Identity and remaining features:** runtime loads hashed users from `server/data/users.json`.
   `POST /api/login` validates scrypt hashes and issues an 8-hour HTTP-only session cookie;
   `GET /api/session` restores the server identity and `POST /api/logout` revokes it (PR #27; US #26).
@@ -81,10 +82,12 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
   Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo editing,
   export and photo analysis are not implemented. Template collages and saved-collage editing are
-  implemented (PR #22; US #21). Collaboration and album cover selection remain page-local prototypes.
+  implemented (PR #22; US #21, partial pending template geometry fixes). Collaboration and album cover
+  selection remain page-local prototypes.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
-  hash parsing, upload selection and retry, and the gallery grid and single view. They do not call
+  hash parsing, upload selection and retry, the gallery grid/single view, and collage templates,
+  editing, saved-collage resolution and API behavior. They do not call
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
@@ -104,7 +107,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
   and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
   Stale approvals are dismissed when the head or merge base changes; approval by someone other than
-  the last pusher is not required by the live ruleset. This branch includes PR #24's shared lint fixes.
+  the last pusher is not required by the live ruleset.
 - **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
   creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
   grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
@@ -113,8 +116,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   Original image fixtures and their ZIP remain unchanged; WebP fixture casing is `sample.WEBP`.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
   `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
-  read-only page with no controls inside it. This preview does not render saved collage layouts; export
-  (US #23) should render this same component. `frontend/test/albumPreview.test.tsx` covers it.
+  read-only page with no controls inside it. It does not render saved collage layouts, so US #22
+  remains partial against export-parity AC2; export (US #23) is not yet implemented.
+  `frontend/test/albumPreview.test.tsx` covers the existing photo-list view.
 
 ## Commands
 
@@ -146,8 +150,9 @@ npm test           # node --experimental-strip-types --test test/*.test.ts
 ```
 
 Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
-both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
-does not include a proxy.
+both dev and preview forward `/api` to port 3000 and need the local API running (`VITE_API_URL` can
+override the API request origin). Do not point mutating tests at a production API; use an isolated
+local API and temporary data. The static build itself does not include a proxy.
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
 `server/`, `npm test` must pass. From the root, browser suites must pass:
