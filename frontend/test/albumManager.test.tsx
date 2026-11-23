@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, expect, test, vi } from "vitest"
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { AlbumManager } from "../src/app/AlbumManager.tsx"
 import type { Collaborator, ManagedAlbum, Photo } from "../src/app/AlbumManager.tsx"
 
@@ -231,16 +231,15 @@ test("New album opens a dialog with Create disabled until a name is typed", () =
   expect(create.disabled).toBe(false)
 })
 
-test("creating an album sends trimmed values, defaults, and closes the dialog", () => {
-  vi.spyOn(Date, "now").mockReturnValue(1234)
+test("creating an album sends trimmed values, defaults, and closes the dialog", async () => {
   const { onAlbumCreate } = setup([album()])
   fireEvent.click(screen.getByRole("button", { name: /New album/ }))
   const d = dialog()
   fireEvent.change(d.getByLabelText("Album name"), { target: { value: "  Beach day  " } })
   fireEvent.change(d.getByLabelText("Description (optional)"), { target: { value: "  Sunny  " } })
-  fireEvent.click(d.getByRole("button", { name: "Create album" }))
+  await act(async () => { fireEvent.click(d.getByRole("button", { name: "Create album" })) })
   expect(onAlbumCreate).toHaveBeenCalledExactlyOnceWith({
-    id: "1234",
+    id: "",
     name: "Beach day",
     description: "Sunny",
     collaborationEnabled: false,
@@ -249,12 +248,12 @@ test("creating an album sends trimmed values, defaults, and closes the dialog", 
   expect(openDialogEl()).toBeNull()
 })
 
-test("pressing Enter in the name field creates the album", () => {
+test("pressing Enter in the name field creates the album", async () => {
   const { onAlbumCreate } = setup([album()])
   fireEvent.click(screen.getByRole("button", { name: /New album/ }))
   const input = dialog().getByLabelText("Album name")
   fireEvent.change(input, { target: { value: "Trip" } })
-  fireEvent.keyDown(input, { key: "Enter" })
+  await act(async () => { fireEvent.keyDown(input, { key: "Enter" }) })
   expect(onAlbumCreate).toHaveBeenCalledTimes(1)
 })
 
@@ -289,7 +288,7 @@ test("rename dialog is prefilled with the album's name and description", () => {
   expect((d.getByLabelText("Description") as HTMLTextAreaElement).value).toBe("Desc")
 })
 
-test("saving a rename sends trimmed values and keeps the other fields", () => {
+test("saving a rename sends trimmed values and keeps the other fields", async () => {
   const a = album({
     id: "a",
     name: "A",
@@ -300,7 +299,7 @@ test("saving a rename sends trimmed values and keeps the other fields", () => {
   const d = openFromCard("A", "Rename album")
   fireEvent.change(d.getByLabelText("Album name"), { target: { value: "  Renamed " } })
   fireEvent.change(d.getByLabelText("Description"), { target: { value: " New desc " } })
-  fireEvent.click(d.getByRole("button", { name: "Save" }))
+  await act(async () => { fireEvent.click(d.getByRole("button", { name: "Save" })) })
   expect(onAlbumUpdate).toHaveBeenCalledExactlyOnceWith({ ...a, name: "Renamed", description: "New desc" })
   expect(openDialogEl()).toBeNull()
 })

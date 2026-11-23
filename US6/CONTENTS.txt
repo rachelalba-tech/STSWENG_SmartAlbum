@@ -1,0 +1,6 @@
+Feature: Add Photos to Album
+Included snippets:
+- frontend/AlbumPage.addPhotos.snippet.tsx
+- frontend/api.addPhotos.snippet.ts
+- frontend/App.addPhotos-integration.snippet.tsx
+- backend/http.addPhotos-route.snippet.ts

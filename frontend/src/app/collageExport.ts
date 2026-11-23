@@ -73,7 +73,10 @@ function loadImage(src: string, title = "Photo"): Promise<HTMLImageElement> {
     }
     const image = new Image()
     try {
-      if (new URL(src, document.baseURI).origin !== window.location.origin) image.crossOrigin = "anonymous"
+      const parsed = new URL(src, document.baseURI)
+      if (parsed.origin !== window.location.origin) {
+        image.crossOrigin = parsed.pathname.startsWith("/api/uploads/") ? "use-credentials" : "anonymous"
+      }
     } catch {
       reject(new Error(`Couldn't load ${title || "a photo"} for export.`))
       return

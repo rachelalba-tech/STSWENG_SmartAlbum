@@ -110,7 +110,7 @@ test("renders a square high-resolution canvas with PNG/JPEG MIME and object-fit:
     100, 0, 200, 200,
     30, 30, 1155, 1155,
   )
-  expect(mockImages.every((image) => image.crossOrigin === "anonymous")).toBe(true)
+  expect(mockImages.every((image) => image.crossOrigin === "use-credentials")).toBe(true)
 })
 
 test("uses a single post-load layout snapshot after a resize during image loading", async () => {
