@@ -1,8 +1,9 @@
-import { randomUUID } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
 import { readFile, unlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { listAlbumsForUser, openAlbum, type Album } from "./albums.ts"
+import { listAlbumsForUser, openAlbum, parseAlbumInput, type Album } from "./albums.ts"
+import { authenticateUser, type PublicUser, type User } from "./users.ts"
 import {
   MAX_COLLAGE_BODY_BYTES,
   listCollagesForUser,
@@ -35,6 +36,8 @@ export type CollageStorage = {
 type Options = {
   albums: Album[]
   ownerId: string
+  saveAlbums?: (albums: Album[]) => void
+  users?: User[]
   photoStorage?: PhotoStorage
   collageStorage?: CollageStorage
 }
@@ -149,6 +152,14 @@ async function handleUpload(
   }
 
   await writeFile(join(storage.uploadsDir, file), body)
+  // The album may have been deleted while its upload body/file was being written.
+  if (!openAlbum(albums, ownerId, albumId)) {
+    await unlink(join(storage.uploadsDir, file))
+    send(res, 404, { error: "album not found" })
+    return
+  }
+  const albumPhotos = storage.photos.filter((p) => p.ownerId === ownerId && p.albumId === albumId)
+  stored.position = albumPhotos.reduce((max, p) => Math.max(max, p.position ?? 0), albumPhotos.length - 1) + 1
   try {
     storage.photos.push(stored)
     storage.save(storage.photos)
@@ -332,66 +343,6 @@ function handleDetach(
   res.end()
 }
 
-async function handleAddPhotos(
-  req: IncomingMessage,
-  res: ServerResponse,
-  albums: Album[],
-  ownerId: string,
-  albumId: string,
-  storage: PhotoStorage | undefined,
-) {
-  if (!storage) {
-    req.resume()
-    send(res, 501, { error: "uploads are not configured" })
-    return
-  }
-  if (!openAlbum(albums, ownerId, albumId)) {
-    req.resume()
-    send(res, 404, { error: "album not found" })
-    return
-  }
-
-  const body = await readJson(req, res)
-  if (body === undefined) return
-  const photoIds = typeof body === "object" && body !== null ? (body as { photoIds?: unknown }).photoIds : undefined
-  if (!Array.isArray(photoIds) || !photoIds.every((id) => typeof id === "string" && id !== "") ||
-    new Set(photoIds).size !== photoIds.length) {
-    send(res, 400, { error: "photoIds must be a unique array of strings" })
-    return
-  }
-
-  const selected = photoIds
-    .map((id) => storage.photos.find((photo) => photo.id === id && photo.ownerId === ownerId))
-    .filter((photo): photo is StoredPhoto => photo !== undefined)
-  if (selected.length !== photoIds.length) {
-    send(res, 404, { error: "one or more photos were not found" })
-    return
-  }
-
-  const filesInAlbum = new Set(storage.photos
-    .filter((photo) => photo.ownerId === ownerId && photo.albumId === albumId)
-    .map((photo) => photo.file))
-  const additions: StoredPhoto[] = []
-  for (const source of selected) {
-    if (!filesInAlbum.has(source.file)) {
-      filesInAlbum.add(source.file)
-      additions.push({ ...source, id: randomUUID(), albumId })
-    }
-  }
-
-  if (additions.length > 0) {
-    const originalLength = storage.photos.length
-    storage.photos.push(...additions)
-    try {
-      storage.save(storage.photos)
-    } catch (err) {
-      storage.photos.splice(originalLength)
-      throw err
-    }
-  }
-  send(res, 200, listPhotosForUser(storage.photos, ownerId, albumId))
-}
-
 async function handleImage(res: ServerResponse, ownerId: string, file: string, storage: PhotoStorage | undefined) {
   const photo = storage?.photos.find((p) => p.file === file && p.ownerId === ownerId)
   if (!storage || !photo) {
@@ -403,18 +354,30 @@ async function handleImage(res: ServerResponse, ownerId: string, file: string, s
   res.writeHead(200, {
     "content-type": type,
     "content-length": bytes.length,
-    "cache-control": "private, max-age=31536000, immutable",
+    "cache-control": "private, no-store",
     "x-content-type-options": "nosniff",
   })
   res.end(bytes)
 }
 
-export function createAlbumServer({ albums, ownerId, photoStorage, collageStorage }: Options): Server {
+export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, users, photoStorage, collageStorage }: Options): Server {
+  // shortcut: sessions are process-local and capped; use a shared store before running multiple API instances.
+  const sessions = new Map<string, { user: PublicUser; expires: number }>()
+  const attempts = new Map<string, { count: number; expires: number }>()
+  let loginWork = 0
   return createServer((req, res) => {
-    res.setHeader(
-      "Access-Control-Allow-Origin",
-      "https://stsweng-smartalbum-1.onrender.com" 
-    )
+    const origin = req.headers.origin
+    const allowedOrigin = origin === undefined || origin === "https://stsweng-smartalbum-1.onrender.com" ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    res.setHeader("Vary", "Origin")
+    res.setHeader("Cache-Control", "no-store")
+    if (origin && allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", origin)
+      res.setHeader("Access-Control-Allow-Credentials", "true")
+    }
+    if (!allowedOrigin && req.method !== "GET") {
+      req.resume(); send(res, 403, { error: "origin not allowed" }); return
+    }
 
     res.setHeader(
       "Access-Control-Allow-Methods",
@@ -438,17 +401,179 @@ export function createAlbumServer({ albums, ownerId, photoStorage, collageStorag
       if (!res.headersSent) send(res, 500, { error: "server error" })
     }
 
-    const upload = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos$/)
-    if (upload && req.method === "PATCH") {
-      const albumId = safeDecode(upload[1])
-      if (albumId === null) {
-        req.resume()
-        send(res, 400, { error: "bad album id" })
-        return
+    const now = Date.now()
+    for (const [token, session] of sessions) if (session.expires <= now) sessions.delete(token)
+    for (const [ip, attempt] of attempts) if (attempt.expires <= now) attempts.delete(ip)
+    const token = req.headers.cookie?.match(/(?:^|;\s*)smart-album-session=([a-f0-9]{64})(?:;|$)/)?.[1]
+    const session = token ? sessions.get(token) : undefined
+    const secure = req.headers["x-forwarded-proto"] === "https" || "encrypted" in req.socket
+    const cookie = (value: string, age: number) => `smart-album-session=${value}; Path=/api; HttpOnly; Max-Age=${age}; ${secure ? "SameSite=None; Secure" : "SameSite=Lax"}`
+
+    if (url.pathname === "/api/login" && req.method === "POST") {
+      const handleLogin = async () => {
+        const raw = await readJson(req, res)
+        if (raw === undefined) return
+        if (typeof raw !== "object" || raw === null) { send(res, 400, { error: "invalid credentials" }); return }
+        const { username, password } = raw as Record<string, unknown>
+        if (typeof username !== "string" || !username || username.length > 200 ||
+          typeof password !== "string" || !password || password.length > 1024) {
+          send(res, 400, { error: "invalid credentials" }); return
+        }
+        const ip = req.socket.remoteAddress ?? "unknown"
+        const attempt = attempts.get(ip) ?? { count: 0, expires: Date.now() + 60_000 }
+        if (attempt.count >= 20 || loginWork >= 4 || (attempts.size >= 1000 && !attempts.has(ip))) {
+          res.setHeader("Retry-After", "60"); send(res, 429, { error: "too many login attempts; retry in one minute" }); return
+        }
+        attempt.count++
+        attempts.set(ip, attempt)
+        loginWork++
+        let user: PublicUser | undefined
+        try { user = await authenticateUser(users ?? [], username, password) } finally { loginWork-- }
+        if (!user) { send(res, 401, { error: "invalid username or password" }); return }
+        if (sessions.size >= 1000) { send(res, 503, { error: "session capacity reached" }); return }
+        if (token) sessions.delete(token)
+        const nextToken = randomBytes(32).toString("hex")
+        sessions.set(nextToken, { user, expires: Date.now() + 8 * 60 * 60 * 1000 })
+        res.setHeader("Set-Cookie", cookie(nextToken, 8 * 60 * 60))
+        send(res, 200, user)
       }
-      handleAddPhotos(req, res, albums, ownerId, albumId, photoStorage).catch(fail)
+      handleLogin().catch(fail)
       return
     }
+    if (url.pathname === "/api/logout" && req.method === "POST") {
+      req.resume()
+      if (token) sessions.delete(token)
+      res.setHeader("Set-Cookie", cookie("", 0))
+      res.writeHead(204); res.end(); return
+    }
+    if (url.pathname === "/api/session" && req.method === "GET") {
+      send(res, session ? 200 : 401, session?.user ?? { error: "sign in required" }); return
+    }
+    // Omitting users is only for existing injected-owner unit fixtures, never the runtime entry point.
+    if (users !== undefined && !session) { req.resume(); send(res, 401, { error: "sign in required" }); return }
+    const ownerId = session?.user.id ?? demoOwnerId
+    if (session?.user.role !== "admin" && users !== undefined &&
+      /^\/api\/albums(?:\/[^/]+)?$/.test(url.pathname) && ["POST", "PATCH"].includes(req.method ?? "")) {
+      req.resume(); send(res, 403, { error: "only administrators create and label albums" }); return
+    }
+
+    const albumRoute = url.pathname.match(/^\/api\/albums(?:\/([^/]+))?$/)
+    if (albumRoute && ["POST", "PATCH", "DELETE"].includes(req.method ?? "")) {
+      const id = albumRoute[1] === undefined ? undefined : safeDecode(albumRoute[1])
+      if (id === null) { req.resume(); send(res, 400, { error: "bad album id" }); return }
+      if (!saveAlbums) { req.resume(); send(res, 501, { error: "album writes are not configured" }); return }
+      const writeAlbum = async () => {
+        if (id === undefined && req.method === "POST") {
+          const raw = await readJson(req, res)
+          if (raw === undefined) return
+          const input = parseAlbumInput(raw)
+          if (!input) { send(res, 400, { error: "title (1–200 characters) and description (up to 2000) are required" }); return }
+          const created: Album = { id: randomUUID(), ...input, ownerId }
+          albums.push(created)
+          try { saveAlbums(albums) } catch (err) { albums.pop(); throw err }
+          send(res, 201, created)
+          return
+        }
+        if (id === undefined || req.method === "POST") { req.resume(); send(res, 405, { error: "method not allowed" }); return }
+        if (req.method === "PATCH") {
+          const raw = await readJson(req, res)
+          if (raw === undefined) return
+          const input = parseAlbumInput(raw)
+          if (!input) { send(res, 400, { error: "invalid album title or description" }); return }
+          const index = albums.findIndex((a) => a.id === id && a.ownerId === ownerId)
+          if (index < 0) { send(res, 404, { error: "album not found" }); return }
+          const previous = albums[index]
+          albums[index] = { ...previous, ...input }
+          try { saveAlbums(albums) } catch (err) { albums[index] = previous; throw err }
+          send(res, 200, albums[index])
+          return
+        }
+        req.resume()
+        const index = albums.findIndex((a) => a.id === id && a.ownerId === ownerId)
+        if (index < 0) { send(res, 404, { error: "album not found" }); return }
+        const [removed] = albums.splice(index, 1)
+        const oldPhotos = photoStorage?.photos.slice()
+        const oldCollages = collageStorage?.collages.slice()
+        if (photoStorage) {
+          photoStorage.photos.splice(0, photoStorage.photos.length, ...photoStorage.photos.map((p) =>
+            p.ownerId === ownerId && p.albumId === id ? { ...p, albumId: "" } : p))
+        }
+        if (collageStorage) {
+          collageStorage.collages.splice(0, collageStorage.collages.length, ...collageStorage.collages.filter((c) =>
+            c.ownerId !== ownerId || c.albumId !== id))
+        }
+        const persisted: (() => void)[] = []
+        try {
+          if (photoStorage && oldPhotos) {
+            photoStorage.save(photoStorage.photos)
+            persisted.push(() => photoStorage.save(oldPhotos))
+          }
+          if (collageStorage && oldCollages) {
+            collageStorage.save(collageStorage.collages)
+            persisted.push(() => collageStorage.save(oldCollages))
+          }
+          saveAlbums(albums)
+        } catch (err) {
+          albums.splice(index, 0, removed)
+          if (photoStorage && oldPhotos) photoStorage.photos.splice(0, photoStorage.photos.length, ...oldPhotos)
+          if (collageStorage && oldCollages) collageStorage.collages.splice(0, collageStorage.collages.length, ...oldCollages)
+          for (const restore of persisted.reverse()) {
+            try { restore() } catch (rollbackError) { console.error("Album deletion rollback failed", rollbackError) }
+          }
+          throw err
+        }
+        res.writeHead(204)
+        res.end()
+      }
+      writeAlbum().catch(fail)
+      return
+    }
+
+    const photoWrite = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos(?:\/(order))?$/)
+    if (photoWrite && req.method === "PATCH") {
+      const id = safeDecode(photoWrite[1])
+      const writePhotos = async () => {
+        if (id === null) { req.resume(); send(res, 400, { error: "bad album id" }); return }
+        if (!photoStorage) { req.resume(); send(res, 501, { error: "uploads are not configured" }); return }
+        const raw = await readJson(req, res)
+        if (raw === undefined) return
+        if (!openAlbum(albums, ownerId, id)) { send(res, 404, { error: "album not found" }); return }
+        const ids = typeof raw === "object" && raw !== null ? (raw as { photoIds?: unknown }).photoIds : undefined
+        if (!Array.isArray(ids) || !ids.every((v) => typeof v === "string" && v !== "") || new Set(ids).size !== ids.length) {
+          send(res, 400, { error: "photoIds must be a unique array of strings" }); return
+        }
+        const selected = ids.map((photoId) => photoStorage.photos.find((p) => p.ownerId === ownerId && p.id === photoId))
+        if (selected.some((p) => !p)) { send(res, 404, { error: "photo not found" }); return }
+        const previous = photoStorage.photos.slice()
+        const inAlbum = photoStorage.photos.filter((p) => p.ownerId === ownerId && p.albumId === id)
+        if (photoWrite[2]) {
+          if (ids.length !== inAlbum.length || selected.some((p) => p!.albumId !== id)) {
+            send(res, 400, { error: "order must contain every photo in this album exactly once" }); return
+          }
+          const positions = new Map(ids.map((photoId, position) => [photoId, position]))
+          photoStorage.photos.splice(0, photoStorage.photos.length, ...photoStorage.photos.map((p) =>
+            positions.has(p.id) && p.ownerId === ownerId ? { ...p, position: positions.get(p.id)! } : p))
+        } else {
+          const files = new Set(inAlbum.map((p) => p.file))
+          let position = inAlbum.reduce((max, p) => Math.max(max, p.position ?? 0), inAlbum.length - 1) + 1
+          for (const p of selected) {
+            if (files.has(p!.file)) continue
+            files.add(p!.file)
+            // Memberships share immutable bytes; adding never moves a photo out of another album.
+            photoStorage.photos.push({ ...p!, id: randomUUID(), albumId: id, position: position++ })
+          }
+        }
+        try { photoStorage.save(photoStorage.photos) } catch (err) {
+          photoStorage.photos.splice(0, photoStorage.photos.length, ...previous)
+          throw err
+        }
+        send(res, 200, listPhotosForUser(photoStorage.photos, ownerId, id))
+      }
+      writePhotos().catch(fail)
+      return
+    }
+
+    const upload = url.pathname.match(/^\/api\/albums\/([^/]+)\/photos$/)
     if (upload && req.method === "POST") {
       const albumId = safeDecode(upload[1])
       if (albumId === null) {

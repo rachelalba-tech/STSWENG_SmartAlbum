@@ -1,4 +1,4 @@
-import type { Photo } from "./api.ts"
+import { API_URL, type Photo } from "./api.ts"
 
 export type PhotoQuality = {
   score: number
@@ -77,7 +77,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
       if (error) reject(error)
       else resolve(image)
     }
-    image.crossOrigin = "anonymous"
+    image.crossOrigin = src.startsWith("/api/") || (API_URL !== "" && src.startsWith(`${API_URL}/api/`))
+      ? "use-credentials"
+      : "anonymous"
     image.onload = () => finish()
     image.onerror = () => finish(new Error("Image could not be loaded"))
     image.src = src

@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "https://stsweng-smartalbum.onrender.com/",
+      "/api": "http://localhost:3000",
     },
   },
 

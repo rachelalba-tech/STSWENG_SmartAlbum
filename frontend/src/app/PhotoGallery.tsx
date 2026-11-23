@@ -7,7 +7,27 @@ import { analyzePhoto, type PhotoQuality } from "./photoQuality.ts"
 type GalleryView = "grid" | "single" | "recommendations"
 type PhotoAnalysis = { quality?: PhotoQuality; error?: string }
 
-export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?: Album[] }) {
+type PhotoGalleryProps = {
+  photos: Photo[]
+  albums?: Album[]
+  title?: string
+  subtitle?: string
+  emptyTitle?: string
+  emptyDescription?: string
+  onRemove?: (photoId: string) => void
+  busy?: boolean
+}
+
+export function PhotoGallery({
+  photos,
+  albums,
+  title = "All photos",
+  subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
+  emptyTitle = "No photos yet",
+  emptyDescription = "Upload photos to an album and they will appear here.",
+  onRemove,
+  busy = false,
+}: PhotoGalleryProps) {
   const [view, setView] = useState<GalleryView>("grid")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [analysis, setAnalysis] = useState<Record<string, PhotoAnalysis>>({})
@@ -24,6 +44,7 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
     if (view !== "single") return
 
     const moveWithKeyboard = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName))) return
       if (event.key === "ArrowLeft") {
         setSelectedIndex((current) => Math.max(current - 1, 0))
       }
@@ -72,7 +93,7 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
   }
 
   async function addPhoto(photo: Photo) {
-    const album = albums.find((item) => item.id === selectedAlbumId)
+    const album = (albums ?? []).find((item) => item.id === selectedAlbumId)
     if (!album) return
     setAddingPhotoId(photo.id)
     setAddError(null)
@@ -102,10 +123,8 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
     <section className="pg" aria-labelledby="photos-heading">
       <div className="pg-header">
         <div>
-          <h2 id="photos-heading">All photos</h2>
-          <p className="pg-subtitle">
-            {photos.length} uploaded photo{photos.length === 1 ? "" : "s"}
-          </p>
+          <h2 id="photos-heading">{title}</h2>
+          <p className="pg-subtitle">{subtitle}</p>
         </div>
 
         {photos.length > 0 && (
@@ -128,18 +147,20 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
               <Maximize2 size={17} aria-hidden="true" />
               Single
             </button>
-            <button
-              type="button"
-              className={`pg-view-button${view === "recommendations" ? " is-active" : ""}`}
-              aria-pressed={view === "recommendations"}
-              disabled={analysisLoading}
-              onClick={() => {
-                setView("recommendations")
-                void runRecommendations()
-              }}
-            >
-              Recommend best photos
-            </button>
+            {albums !== undefined && (
+              <button
+                type="button"
+                className={`pg-view-button${view === "recommendations" ? " is-active" : ""}`}
+                aria-pressed={view === "recommendations"}
+                disabled={analysisLoading}
+                onClick={() => {
+                  setView("recommendations")
+                  void runRecommendations()
+                }}
+              >
+                Recommend best photos
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -147,8 +168,8 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
       {photos.length === 0 ? (
         <div className="pg-empty">
           <Grid3X3 size={32} aria-hidden="true" />
-          <h3>No photos yet</h3>
-          <p>Upload photos to an album and they will appear here.</p>
+          <h3>{emptyTitle}</h3>
+          <p>{emptyDescription}</p>
           <a href="#/upload">Upload photos</a>
         </div>
       ) : view === "recommendations" ? (
@@ -174,10 +195,10 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
                 <label htmlFor="pg-target-album">Add recommended photos to</label>
                 <select id="pg-target-album" value={selectedAlbumId} onChange={(event) => setSelectedAlbumId(event.target.value)}>
                   <option value="">Choose an existing album</option>
-                  {albums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}
+                  {(albums ?? []).map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}
                 </select>
               </div>
-              {albums.length === 0 && <p>No existing albums are available. Create an album before adding photos.</p>}
+              {(albums ?? []).length === 0 && <p>No existing albums are available. Create an album before adding photos.</p>}
               {addError && <p role="alert" className="pg-add-error">{addError}</p>}
               {addStatus && (
                 <p role="status" className="pg-add-status">
@@ -242,6 +263,7 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
                 />
                 <span>{photo.title || `Photo ${index + 1}`}</span>
               </button>
+              {onRemove && <button disabled={busy} onClick={() => onRemove(photo.id)}>Remove {photo.title || "photo"} from album</button>}
             </li>
           ))}
         </ul>
@@ -282,6 +304,7 @@ export function PhotoGallery({ photos, albums = [] }: { photos: Photo[]; albums?
             </button>
           </div>
           <p className="pg-keyboard-hint">Use the arrow keys to browse photos</p>
+          {onRemove && <button disabled={busy} onClick={() => onRemove(selected.id)}>Remove {selected.title || "photo"} from album</button>}
         </div>
       )}
     </section>

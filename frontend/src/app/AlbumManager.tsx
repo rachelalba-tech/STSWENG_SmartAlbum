@@ -40,11 +40,13 @@ export interface ManagedAlbum {
 }
 
 interface AlbumManagerProps {
+  canLabel?: boolean
   albums: ManagedAlbum[]
   photos: Photo[]
-  onAlbumCreate: (album: ManagedAlbum) => void
+  onAlbumCreate: (album: ManagedAlbum) => void | Promise<void>
   onAlbumSelect: (albumId: string | null) => void
-  onAlbumUpdate: (album: ManagedAlbum) => void
+  onAlbumUpdate: (album: ManagedAlbum) => void | Promise<void>
+  onAlbumDelete?: (id: string) => Promise<void>
   /** Saved collages. Pass these (with the handlers below) to enable saving and viewing. */
   collages?: SavedCollage[]
   onCollageSave?: (draft: CollageDraft) => Promise<SavedCollage>
@@ -98,6 +100,7 @@ function Modal({
       ref={ref}
       className={`am-dialog${small ? " am-dialog--sm" : ""}`}
       onClose={onClose}
+      onCancel={(e) => { e.preventDefault(); onClose() }}
       // React events bubble through portals, so stop clicks from reaching the album card
       onClick={(e) => {
         e.stopPropagation()
@@ -145,21 +148,30 @@ function IconButton({
 
 // Dialogs 
 
-function RenameAlbumDialog({ album, onUpdate }: { album: ManagedAlbum; onUpdate: (a: ManagedAlbum) => void }) {
+function RenameAlbumDialog({ album, onUpdate }: { album: ManagedAlbum; onUpdate: (a: ManagedAlbum) => void | Promise<void> }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(album.name)
   const [description, setDescription] = useState(album.description)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleOpen = () => {
     setName(album.name)
     setDescription(album.description)
+    setError(null)
     setOpen(true)
   }
 
-  const handleSave = () => {
-    if (!name.trim()) return
-    onUpdate({ ...album, name: name.trim(), description: description.trim() })
-    setOpen(false)
+  const handleSave = async () => {
+    if (busy || !name.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onUpdate({ ...album, name: name.trim(), description: description.trim() })
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save album")
+    } finally { setBusy(false) }
   }
 
   return (
@@ -167,13 +179,15 @@ function RenameAlbumDialog({ album, onUpdate }: { album: ManagedAlbum; onUpdate:
       <IconButton label="Rename album" onClick={handleOpen}>
         <Edit size={14} />
       </IconButton>
-      <Modal open={open} onClose={() => setOpen(false)} small title={<><Edit size={16} /> Rename album</>}>
+      <Modal open={open} onClose={() => !busy && setOpen(false)} small title={<><Edit size={16} /> Rename album</>}>
         <div>
           <label className="am-label" htmlFor={`rename-${album.id}`}>Album name</label>
           <input
             id={`rename-${album.id}`}
             className="am-input"
             value={name}
+            maxLength={200}
+            disabled={busy}
             onChange={(e) => setName(e.target.value)}
             placeholder="Album name..."
             onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
@@ -186,15 +200,18 @@ function RenameAlbumDialog({ album, onUpdate }: { album: ManagedAlbum; onUpdate:
             id={`rename-desc-${album.id}`}
             className="am-textarea"
             value={description}
+            maxLength={2000}
+            disabled={busy}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description (optional)..."
             rows={2}
           />
         </div>
         <div className="am-dialog-actions">
-          <button className="am-btn am-btn--outline" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="am-btn am-btn--primary" onClick={handleSave} disabled={!name.trim()}>Save</button>
+          <button className="am-btn am-btn--outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
+          <button className="am-btn am-btn--primary" onClick={handleSave} disabled={busy || !name.trim()}>Save</button>
         </div>
+        {error && <p role="alert">{error}</p>}
       </Modal>
     </>
   )
@@ -444,16 +461,21 @@ function SavedCollagesDialog({
 // Main album components 
 
 export function AlbumManager({
-  albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate, collages, onCollageSave, onCollageDelete,
+  albums, photos, onAlbumCreate, onAlbumSelect, onAlbumUpdate, onAlbumDelete, collages, onCollageSave, onCollageDelete, canLabel = true,
 }: AlbumManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDescription, setNewDescription] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleCreateAlbum = () => {
-    if (!newName.trim()) return
-    onAlbumCreate({
-      id: Date.now().toString(),
+  const handleCreateAlbum = async () => {
+    if (busy || !newName.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onAlbumCreate({
+      id: "",
       name: newName.trim(),
       description: newDescription.trim(),
       collaborationEnabled: false,
@@ -462,6 +484,18 @@ export function AlbumManager({
     setNewName("")
     setNewDescription("")
     setIsCreateOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create album")
+    } finally { setBusy(false) }
+  }
+
+  const handleDelete = async (album: ManagedAlbum) => {
+    if (busy || !onAlbumDelete || !window.confirm(`Delete ${album.name}? Photos stay in your library; saved collages are removed.`)) return
+    setBusy(true)
+    setError(null)
+    try { await onAlbumDelete(album.id) } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete album")
+    } finally { setBusy(false) }
   }
 
   const photoCount = (albumId: string) => photos.filter((p) => p.albumId === albumId).length
@@ -486,19 +520,22 @@ export function AlbumManager({
           <h2>Photo albums</h2>
           <p className="am-muted">Organize your photos into collections</p>
         </div>
-        <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
+        {canLabel && <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
           <Plus size={16} />
           New album
-        </button>
+        </button>}
       </div>
 
-      <Modal open={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create new album">
+      {error && !isCreateOpen && <p role="alert">{error}</p>}
+      <Modal open={isCreateOpen} onClose={() => !busy && setIsCreateOpen(false)} title="Create new album">
         <div>
           <label className="am-label" htmlFor="album-name">Album name</label>
           <input
             id="album-name"
             className="am-input"
             value={newName}
+            maxLength={200}
+            disabled={busy}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleCreateAlbum() }}
             placeholder="Enter album name..."
@@ -511,28 +548,31 @@ export function AlbumManager({
             id="album-description"
             className="am-textarea"
             value={newDescription}
+            maxLength={2000}
+            disabled={busy}
             onChange={(e) => setNewDescription(e.target.value)}
             placeholder="Enter album description..."
             rows={3}
           />
         </div>
         <div className="am-dialog-actions">
-          <button className="am-btn am-btn--outline" onClick={() => setIsCreateOpen(false)}>Cancel</button>
-          <button className="am-btn am-btn--primary" onClick={handleCreateAlbum} disabled={!newName.trim()}>
+          <button className="am-btn am-btn--outline" onClick={() => setIsCreateOpen(false)} disabled={busy}>Cancel</button>
+          <button className="am-btn am-btn--primary" onClick={handleCreateAlbum} disabled={busy || !newName.trim()}>
             Create album
           </button>
         </div>
+        {error && <p role="alert">{error}</p>}
       </Modal>
 
       {albums.length === 0 ? (
         <div className="am-empty">
           <Folder size={48} />
           <h3>No albums yet</h3>
-          <p className="am-muted">Create your first album to organize your photos</p>
-          <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
+          <p className="am-muted">{canLabel ? "Create your first album to organize your photos" : "Ask an administrator to provision an album for your account."}</p>
+          {canLabel && <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
             <Plus size={16} />
             Create album
-          </button>
+          </button>}
         </div>
       ) : (
         <div className="am-grid">
@@ -592,9 +632,8 @@ export function AlbumManager({
                       )}
                       <CollaboratorsDialog album={album} onUpdate={onAlbumUpdate} />
                       <AlbumCoverDialog album={album} photos={photos} onUpdate={onAlbumUpdate} />
-                      <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />
-                      {/* TODO: wire up delete (the original had no handler either) */}
-                      <IconButton label="Delete album" danger onClick={() => {}}>
+                      {canLabel && <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />}
+                      <IconButton label="Delete album" danger onClick={() => void handleDelete(album)}>
                         <Trash2 size={14} />
                       </IconButton>
                     </div>

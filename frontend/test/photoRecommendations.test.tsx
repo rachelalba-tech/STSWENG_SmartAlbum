@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, expect, test, vi } from "vitest"
-import { fetchPhotos, type Album, type Photo } from "../src/app/api.ts"
+import type { Album, Photo } from "../src/app/api.ts"
 import { PhotoGallery } from "../src/app/PhotoGallery.tsx"
 import { scoreImagePixels } from "../src/app/photoQuality.ts"
 
@@ -69,6 +69,7 @@ function stubImageAnalysis() {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 test("ranks sharp image detail and rejects blurry, dark, and clipped synthetic photos", () => {
@@ -92,11 +93,15 @@ test("ranks sharp image detail and rejects blurry, dark, and clipped synthetic p
 })
 
 test("resolves API-relative image paths against the configured backend origin", async () => {
+  vi.stubEnv("VITE_API_URL", "https://api.example.test/")
+  vi.resetModules()
+  const { fetchPhotos } = await import("../src/app/api.ts")
   const request = vi.fn().mockResolvedValue({ ok: true, json: async () => photos })
   vi.stubGlobal("fetch", request)
 
   const loaded = await fetchPhotos()
   const backend = new URL(request.mock.calls[0][0]).origin
+  expect(backend).toBe("https://api.example.test")
   expect(new URL(loaded[0].src).origin).toBe(backend)
   expect(new URL(loaded[0].src).pathname).toBe("/api/uploads/sharp.jpg")
   expect(loaded[0].thumbnail).toBe(loaded[0].src)

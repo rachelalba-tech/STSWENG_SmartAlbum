@@ -1,0 +1,7 @@
+Feature: Album Headlines and Descriptions
+Included snippets:
+- frontend/AlbumPage.details.snippet.tsx
+- frontend/api.updateAlbum.snippet.ts
+- frontend/App.updateAlbum-integration.snippet.tsx
+- backend/http.updateAlbum-route.snippet.ts
+- backend/album-description-persistence.snippet.ts
