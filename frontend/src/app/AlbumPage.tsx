@@ -23,6 +23,9 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   const displayed = order ? order.map((id) => photos.find((p) => p.id === id)!).filter(Boolean) : photos
   const available = (library ?? []).filter((p) => !photos.some((current) => current.src === p.src))
 
+  const hasTools =
+    (!!onUpdate && !editing) || !!onAdd || (!!onReorder && photos.length > 1 && !order) || (!!order && !!onReorder)
+
   async function save(action: () => Promise<void>, finish: () => void) {
     if (busy) return
     setBusy(true)
@@ -41,14 +44,24 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
 
   return (
     <article className="album">
-      <a className="back" href="#/">All albums</a>
-      <a href={`#/albums/${encodeURIComponent(album.id)}/preview`} style={{ display: "block", marginBottom: 16 }}>Preview album</a>
+      <div className="album-nav">
+        <a className="back" href="#/"><h3>All albums</h3></a>
+        <a href={`#/albums/${encodeURIComponent(album.id)}/preview`}><h3>Preview album</h3></a>
+      </div>
       <h2>{album.title}</h2>
       {album.description && <p>{album.description}</p>}
       {error && <p role="alert">{error}</p>}
-      {onUpdate && !editing && <button onClick={() => {
-        setTitle(album.title); setDescription(album.description ?? ""); setEditing(true)
-      }}>Edit album details</button>}
+      {hasTools && <div className="album-toolbar" role="toolbar" aria-label="Album options">
+        {onUpdate && !editing && <button type="button" onClick={() => {
+          setTitle(album.title); setDescription(album.description ?? ""); setEditing(true)
+        }}>Edit album details</button>}
+        {onAdd && <button type="button" aria-expanded={adding} disabled={busy || !library || !!order} onClick={() => { setSelected([]); setAdding(!adding) }}>Add photos from library</button>}
+        {onReorder && photos.length > 1 && !order && <button type="button" disabled={busy || adding} onClick={() => setOrder(photos.map((p) => p.id))}>Edit photo order</button>}
+        {order && onReorder && <>
+          <button type="button" disabled={busy} onClick={() => void save(() => onReorder(order), () => setOrder(null))}>Save photo order</button>
+          <button type="button" disabled={busy} onClick={() => setOrder(null)}>Cancel order</button>
+        </>}
+      </div>}
       {editing && onUpdate && <form onSubmit={(e) => {
         e.preventDefault()
         void save(() => onUpdate(title.trim(), description.trim()), () => setEditing(false))
@@ -58,7 +71,6 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
         <button disabled={busy || !title.trim()}>Save details</button>
         <button type="button" disabled={busy} onClick={() => setEditing(false)}>Cancel details</button>
       </form>}
-      {onAdd && <button disabled={busy || !library || !!order} onClick={() => { setSelected([]); setAdding(!adding) }}>Add photos from library</button>}
       {adding && onAdd && <fieldset disabled={busy}>
         <legend>Choose photos to add</legend>
         {available.length === 0 && <p>No more photos available.</p>}
@@ -69,12 +81,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
         <button disabled={!selected.length} onClick={() => void save(() => onAdd(selected), () => setAdding(false))}>Add selected photos</button>
         <button onClick={() => setAdding(false)}>Cancel adding</button>
       </fieldset>}
-      {onReorder && photos.length > 1 && !order && <button disabled={busy || adding} onClick={() => setOrder(photos.map((p) => p.id))}>Edit photo order</button>}
-      {order && onReorder && <>
-        <p>Drag photos, or use Move earlier / Move later, then save.</p>
-        <button disabled={busy} onClick={() => void save(() => onReorder(order), () => setOrder(null))}>Save photo order</button>
-        <button disabled={busy} onClick={() => setOrder(null)}>Cancel order</button>
-      </>}
+      {order && onReorder && <p>Drag photos, or use Move earlier / Move later, then save.</p>}
       {!order ? <PhotoGallery photos={photos} title="Album photos" subtitle={`${photos.length} photos in this album`}
         emptyTitle="No photos in this album" emptyDescription="Upload photos to this album and they will appear here."
         busy={busy} onRemove={onRemove ? (id) => void save(async () => { await onRemove(id) }, () => {}) : undefined} />

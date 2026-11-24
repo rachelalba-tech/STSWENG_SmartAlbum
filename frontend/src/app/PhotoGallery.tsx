@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Grid3X3, Maximize2 } from "lucide-react"
-import "../styles/PhotoGallery.css"
+import "../styles/styles.css"
 import type { Photo } from "./api.ts"
 
 type GalleryView = "grid" | "single"
@@ -56,7 +56,7 @@ export function PhotoGallery({
     <section className="pg" aria-labelledby="photos-heading">
       <div className="pg-header">
         <div>
-          <h2 id="photos-heading">{title}</h2>
+          <h2 className="pg=title" id="photos-heading">{title}</h2>
           <p className="pg-subtitle">{subtitle}</p>
         </div>
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { ChangeEvent, DragEvent } from "react"
 import { Plus, Upload } from "lucide-react"
-import "../styles/PhotoUpload.css"
+import "../styles/styles.css"
 import { uploadPhoto } from "./api.ts"
 import type { Photo } from "./api.ts"
 

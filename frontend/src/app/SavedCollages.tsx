@@ -4,7 +4,7 @@ import type { SaveHandler } from "./AlbumCollage"
 import { resolveCollage } from "./collageStore"
 import type { SavedCollage } from "./collageStore"  
 import type { ManagedAlbum, Photo } from "./AlbumManager"
-import "../styles/AlbumCollage.css"
+import "../styles/styles.css"
 
 const formatDate = (iso: string) => {
   const d = new Date(iso)
