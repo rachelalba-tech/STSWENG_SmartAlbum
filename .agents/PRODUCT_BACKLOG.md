@@ -87,13 +87,13 @@ AC2: Button labels and edit view are easy to understand and follow
 
 ### US #5
 
-As a user, I want to rename album sections so that their titles describe the pictures they contain.
+As a user, I want to rename album headlines and descriptions so that they describe the pictures they contain.
 
 - **Status:** Partial — album title and description are persisted through `PATCH /api/albums/:id` (PR #23); separate album subsections are not implemented.
 - **Estimate or Story Points:** 3
 - **Priority:** Middle
 - **Taken by:** Alwayne
-- **Pre-condition:** THe user opened an album
+- **Pre-condition:** The user opened an album
 - **Scenario 1:**
 1. User opens an album
 2. User clicks edit album
@@ -333,7 +333,7 @@ As a user, I want to crop photos within album pages so that I do not need to use
 - **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
-- **Taken by:** —
+- **Taken by:** Joed
 - **Pre-condition:** A photo is selected within an album page and edit mode is activated.
 - **Scenario 1:** —
 - **Post-condition:** The cropped version of the photo is updated and rendered on the album page.
@@ -350,12 +350,20 @@ As a user I want to rotate photos within the application so that I do not need t
 - **Status:** Not implemented.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
-- **Taken by:** —
+- **Taken by:** Alwayne
 - **Pre-condition:** User is looking at one photo and has selected to edit via rotate
-- **Scenario 1:** —
+- **Scenario 1: Preset Rotations**
+User selects a picture
+Clicks the rotate button
+Clicks the present for 90 degree rotation
+Photo rotates by +90 degrees
+Rotation is saved
 - **Post-condition:** Edits are saved in the picture. The rotation is seen in the picture
 - **Acceptance Criteria:** —
-
+AC1: Any rotation made is saved to the photo
+AC2: If a rotated photo is being rotated again, it will start the rotation from its current state, not original state
+AC3: Rotation button and instruction are intuitive
+AC4: Rotated photos will also appear rotated in the albums they are in and vice versa
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
 | — | — | — | — |
@@ -367,7 +375,7 @@ As a user, I want to add captions to individual photos so that the users can get
 - **Status:** Not implemented — a description data field exists, but there is no caption editing/display workflow.
 - **Estimate or Story Points:** —
 - **Priority:** Low
-- **Taken by:** —
+- **Taken by:** John
 - **Pre-condition:** The target photo is placed within an album layout.
 - **Scenario 1:** —
 - **Post-condition:** The entered caption is attached to the individual photo and displayed below or alongside it.
@@ -382,9 +390,9 @@ As a user, I want to add captions to individual photos so that the users can get
 As a user, I want to adjust the color grading of individual photos using the system so that I can make edits and improve the look of the pictures without needing another application
 
 - **Status:** Not implemented.
-- **Estimate or Story Points:** —
+- **Estimate or Story Points:** 5
 - **Priority:** Low
-- **Taken by:** —
+- **Taken by:** Natt
 - **Pre-condition:** A photo in the album is selected and the color grading tool panel is open.
 - **Scenario 1:** —
 - **Post-condition:** Color grading adjustments are applied and saved for the targeted photo.
@@ -399,9 +407,9 @@ As a user, I want to adjust the color grading of individual photos using the sys
 As a user, I want to apply consistent color grading across my entire album so that all photos have a consistent look
 
 - **Status:** Not implemented.
-- **Estimate or Story Points:** —
+- **Estimate or Story Points:** 5
 - **Priority:** Low
-- **Taken by:** —
+- **Taken by:** Joed
 - **Pre-condition:** Color grading adjustments or preset profiles have been configured in the album settings
 - **Scenario 1:** —
 - **Post-condition:** The selected color grading theme or adjustments are uniformly applied across all photos in the album
@@ -471,7 +479,7 @@ AC2: The preview stage will show an accurate view of what the final product will
 
 ### US #23
 
-As a user, I want to export my completed photo album so that I can save it on my device
+As a user, I want to export my completed photo album as a PDF, webpage, or image so that I can save it on my device
 
 - **Status:** Not implemented — no export control or downloadable collage file.
 - **Estimate or Story Points:** 4
@@ -494,12 +502,13 @@ AC3: The photo collage is looks clear and neat even after exporting
 
 ### US #24
 
-As an admin I want to be able to upload pictures, delete pictures, edit pictures, and create albums so that other people can add pictures into it
+As an admin I want to be able to upload pictures, delete pictures, edit pictures, and create albums so that other people can add pictures into it and see what pictures have been added
+
 
 - **Status:** Partial — admin login/authorization (PR #27), uploads (PR #14) and persisted album creation (PR #23) exist; photo editing, library deletion and shared multi-user albums are not implemented. No assignee.
-- **Estimate or Story Points:** —
+- **Estimate or Story Points:** 4
 - **Priority:** Middle
-- **Taken by:** —
+- **Taken by:** Joed
 - **Pre-condition:** An administrator user is logged in with admin role privileges active.
 - **Scenario 1:** —
 - **Post-condition:** Administrative actions (upload, edit, delete pictures, create shared albums) are working
@@ -511,12 +520,12 @@ As an admin I want to be able to upload pictures, delete pictures, edit pictures
 
 ### US #25
 
-As a user I want to be able to add pictures to albums, upload pictures, delete pictures, and edit pictures so that I can also decide on which photos to keep.
+As a user I want to be able to add pictures to albums, share albums, upload pictures, delete pictures, and edit pictures so that I can also decide on which photos to keep.
 
 - **Status:** Partial — standard-user login (PR #27), uploads (PR #14) and adding/removing album memberships (PR #23/#17) exist; photo editing and library deletion are not implemented. No assignee.
-- **Estimate or Story Points:** —
+- **Estimate or Story Points:** 3
 - **Priority:** Middle
-- **Taken by:** —
+- **Taken by:** John
 - **Pre-condition:** A standard user account is logged in
 - **Scenario 1:** —
 - **Post-condition:** User modifications (uploading, editing, adding, or deleting photos across albums) are saved.
@@ -542,6 +551,55 @@ As a user and admin I want to be able to log in to my account using my username 
 AC1: Logging in with the correct credentials gets the user inside the application
 AC2: Logging in with wrong credentials gives a prompt to the user to check their email/password or sign up
 AC3: The login screen is easy to understand, follow, and navigate
+
+| Task # | Task Description | Effort Estimate | Taken by |
+|---|---|---|---|
+| — | — | — | — |
+
+### US #27
+
+As a user I want to be able to sign up and make my own account so that I can create my own set of credentials to use the application with
+
+- **Status:** -
+- **Estimate or Story Points:** 3
+- **Priority:** High
+- **Taken by:** Alwayne
+- **Pre-condition:** The user is on the home page and has no account yet.
+- **Scenario 1:**
+
+User is on the homepage
+User has no account yet
+They click the sign up button
+The application asks for their name, email, and password
+They click sign up
+System validates that the account does not yet exist in the database
+If validation is successful user has made a new account and is redirected to the login
+Their login credentials are valid and let them into the application
+
+- **Post-condition:** The user  can now login with their chosen email and password
+- **Acceptance Criteria:**
+AC1: User can login with their inputted email and password
+AC2: System checks the database for any existing accounts with the same email. If there is already and existing account the user is given a prompt saying that their account already exists
+
+| Task # | Task Description | Effort Estimate | Taken by |
+|---|---|---|---|
+| — | — | — | — |
+
+
+### US #28
+
+As a user I want to be able to delete pictures I have uploaded from the gallery view of the application so that I can clear up any unwanted photos
+
+- **Status:** -
+- **Estimate or Story Points:** 3
+- **Priority:** High
+- **Taken by:** Natt
+- **Pre-condition:** The user is on the photos page
+- **Scenario 1:** 
+- **Post-condition:** The selected picture can no longer be found anywhere in the application
+- **Acceptance Criteria:**
+AC1: Deleting any picture, removes it completely from the application
+AC2: Any deleted picture can no longer be found in any albums
 
 | Task # | Task Description | Effort Estimate | Taken by |
 |---|---|---|---|
