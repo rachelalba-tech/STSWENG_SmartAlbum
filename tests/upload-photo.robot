@@ -94,3 +94,18 @@ Removing A Queued Photo Does Not Upload It
     Upload Queued Photos    1
     ${expected}=    Evaluate    $before + 1
     Library Should Contain Photos    ${expected}
+
+Upload Photo Without Selecting An Album
+    [Tags]    US-9
+    ${before}=    Get Photo Count
+    Go To    ${ALBUMS_URL}/#/upload
+    Wait Until Element Is Visible    id:pu-album
+    List Selection Should Be    id:pu-album    No album (Photos only)
+    Select Photo File    sample.png
+    Upload Queued Photos    1
+    Wait Until Page Contains Link    View in Photos
+    ${expected}=    Evaluate    $before + 1
+    Library Should Contain Photos    ${expected}
+    Reload Page
+    Wait Until Element Is Visible    css:.pg-subtitle
+    Library Should Contain Photos    ${expected}

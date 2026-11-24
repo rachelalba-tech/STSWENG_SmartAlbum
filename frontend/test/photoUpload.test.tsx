@@ -141,12 +141,24 @@ test("uploading sends every photo to the chosen album and reports all of them", 
   expect(screen.getAllByText("Uploaded", { selector: ".pu-item-status" })).toHaveLength(5)
 })
 
-test("uploads to the first album by default", async () => {
+test("uploads to the photo library without an album by default", async () => {
   const upload = fakeUpload()
   render(<PhotoUpload albums={albums} upload={upload} />)
   choose([file("1.png")])
   fireEvent.click(uploadButton())
-  await waitFor(() => expect(upload).toHaveBeenCalledWith("a", expect.any(File)))
+  await waitFor(() => expect(upload).toHaveBeenCalledWith("", expect.any(File)))
+})
+
+test("allows uploading photos when there are no albums", async () => {
+  const upload = fakeUpload()
+  const onUploaded = vi.fn()
+  render(<PhotoUpload albums={[]} upload={upload} onUploaded={onUploaded} />)
+  choose([file("solo.png")])
+  fireEvent.click(uploadButton())
+  await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Uploaded 1 photo."))
+  expect(upload).toHaveBeenCalledWith("", expect.any(File))
+  expect(onUploaded).toHaveBeenCalledTimes(1)
+  expect(onUploaded.mock.calls[0][0][0].albumId).toBe("")
 })
 
 test("a failed photo stays listed, the rest are saved, and retry sends only the failed one", async () => {

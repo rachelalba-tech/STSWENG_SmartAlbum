@@ -105,7 +105,7 @@ async function handleUpload(
     send(res, 501, { error: "uploads are not configured" })
     return
   }
-  if (!openAlbum(albums, ownerId, albumId)) {
+  if (albumId !== "" && !openAlbum(albums, ownerId, albumId)) {
     req.resume()
     send(res, 404, { error: "album not found" })
     return
@@ -155,14 +155,16 @@ async function handleUpload(
   }
 
   await writeFile(join(storage.uploadsDir, file), body)
-  // The album may have been deleted while its upload body/file was being written.
-  if (!openAlbum(albums, ownerId, albumId)) {
-    await unlink(join(storage.uploadsDir, file))
-    send(res, 404, { error: "album not found" })
-    return
+  if (albumId !== "") {
+    // The album may have been deleted while its upload body/file was being written.
+    if (!openAlbum(albums, ownerId, albumId)) {
+      await unlink(join(storage.uploadsDir, file))
+      send(res, 404, { error: "album not found" })
+      return
+    }
+    const albumPhotos = storage.photos.filter((p) => p.ownerId === ownerId && p.albumId === albumId)
+    stored.position = albumPhotos.reduce((max, p) => Math.max(max, p.position ?? 0), albumPhotos.length - 1) + 1
   }
-  const albumPhotos = storage.photos.filter((p) => p.ownerId === ownerId && p.albumId === albumId)
-  stored.position = albumPhotos.reduce((max, p) => Math.max(max, p.position ?? 0), albumPhotos.length - 1) + 1
   try {
     storage.photos.push(stored)
     storage.save(storage.photos)
@@ -577,6 +579,11 @@ export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, us
         send(res, 200, listPhotosForUser(photoStorage.photos, ownerId, id))
       }
       writePhotos().catch(fail)
+      return
+    }
+
+    if (url.pathname === "/api/photos" && req.method === "POST") {
+      handleUpload(req, res, albums, ownerId, "", photoStorage).catch(fail)
       return
     }
 

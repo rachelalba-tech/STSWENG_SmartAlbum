@@ -24,7 +24,7 @@ export function PhotoGallery({
   title = "All photos",
   subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
   emptyTitle = "No photos yet",
-  emptyDescription = "Upload photos to an album and they will appear here.",
+  emptyDescription = "Upload photos and they will appear here.",
   onRemove,
   busy = false,
 }: PhotoGalleryProps) {
@@ -110,6 +110,16 @@ export function PhotoGallery({
   }
 
   const selected = photos[safeIndex]
+  const selectedAlbumNames = selected && albums !== undefined
+    ? (() => {
+        const ids = new Set(selected.albumIds ?? (selected.albumId ? [selected.albumId] : []))
+        const justAdded = addedToByPhoto[selected.id]
+        if (justAdded) ids.add(justAdded)
+        return [...ids]
+          .map((id) => albums.find((album) => album.id === id)?.title)
+          .filter((name): name is string => Boolean(name))
+      })()
+    : []
   const recommended = photos
     .flatMap((photo) => {
       const quality = analysis[photo.id]?.quality
@@ -269,6 +279,18 @@ export function PhotoGallery({
         </ul>
       ) : (
         <div className="pg-single" aria-live="polite">
+          <div className="pg-single-meta">
+            <strong className="pg-single-title">{selected.title || `Photo ${safeIndex + 1}`}</strong>
+            {albums !== undefined && (
+              <span className="pg-single-album">
+                {selectedAlbumNames.length === 0
+                  ? "No album"
+                  : selectedAlbumNames.length === 1
+                    ? `Album: ${selectedAlbumNames[0]}`
+                    : `Albums: ${selectedAlbumNames.join(", ")}`}
+              </span>
+            )}
+          </div>
           <div className="pg-stage">
             <button
               type="button"
@@ -286,7 +308,6 @@ export function PhotoGallery({
                 alt={selected.title || `Photo ${safeIndex + 1}`}
               />
               <figcaption>
-                <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
                 <span>
                   {safeIndex + 1} of {photos.length}
                 </span>

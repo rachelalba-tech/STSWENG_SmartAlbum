@@ -50,15 +50,17 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   them out of other albums, and drag/button reordering with an explicit save (US #4/#6/#8).
   The album page shows the title, a link back, and that
   album's photos, with a control to take a photo out of that album. Upload sends several JPG, PNG,
-  GIF, or WebP files (10 MB each) to an album the API already has (US #9, Natt, PR #14). The gallery
+  GIF, or WebP files (10 MB each) either directly to the photo library (default, works with zero
+  albums) or into an existing album (US #9, Natt, PR #14). The gallery
   toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json`, `server/data/photos.json` and `server/data/collages.json`, and creates
   `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
   `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
-  `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
-  owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
+  `GET /api/photos?albumId=` limits the list to one album. `POST /api/photos` stores an owned
+  library-only upload (`albumId: ""`) without requiring an album, and `POST /api/albums/:id/photos`
+  stores an owned upload into an album (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
   and leaves the file in the library (US #7, Joed). Albums have `id`, `title`, `ownerId` and optional `description`.
   `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
