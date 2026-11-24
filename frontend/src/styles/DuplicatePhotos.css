@@ -1,0 +1,131 @@
+.dp {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--social-bg);
+  text-align: left;
+}
+
+.dp-actions,
+.dp-confirm,
+.dp-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dp-button,
+.dp-photo-actions button,
+.dp-error button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: 600 13px/1.2 var(--sans);
+  cursor: pointer;
+}
+
+.dp-button:disabled,
+.dp-photo-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dp-button--danger,
+.dp-photo-actions .dp-delete {
+  border-color: #b63a42;
+  color: #b32631;
+}
+
+.dp-status,
+.dp-empty,
+.dp-scope {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.dp-scope {
+  max-width: 900px;
+  line-height: 1.5;
+}
+
+.dp-error {
+  color: #b32631;
+}
+
+.dp-confirm {
+  margin-top: 12px;
+}
+
+.dp-confirm p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.dp-groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.dp-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.dp-photo {
+  min-width: 0;
+}
+
+.dp-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.dp-photo > a {
+  display: block;
+  border-radius: 6px;
+}
+
+.dp-photo > a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.dp-photo > span {
+  display: block;
+  margin: 6px 0;
+  overflow: hidden;
+  color: var(--text-h);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dp-photo-actions {
+  align-items: flex-start;
+}
+
+.dp-photo-actions button {
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.dp-kept {
+  align-self: center;
+  color: var(--text);
+  font-size: 12px;
+}

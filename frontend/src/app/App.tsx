@@ -9,6 +9,7 @@ import { AlbumPreview } from "./AlbumPreview.tsx"
 import { AppTabs } from "./AppTabs.tsx"
 import { PhotoUpload } from "./PhotoUpload.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
+import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 import { albumIdFromHash, pageFromHash, previewAlbumIdFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
 import type { ManagedAlbum } from "./AlbumManager.tsx"
@@ -103,9 +104,11 @@ function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
 function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: boolean; canLabel: boolean }) {
   const [album, setAlbum] = useState<Album | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [photoStatus, setPhotoStatus] = useState<"loading" | "ready" | "error">("loading")
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [library, setLibrary] = useState<Photo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [photoAttempt, setPhotoAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -122,20 +125,40 @@ function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: b
     }
   }, [id])
 
+  async function reloadPhotos() {
+    const [next, nextLibrary] = await Promise.all([fetchPhotos(id), fetchPhotos()])
+    setPhotos(next)
+    setLibrary(nextLibrary)
+    setPhotoStatus("ready")
+    setPhotoError(null)
+  }
+
   useEffect(() => {
     let active = true
     fetchPhotos(id).then(
       (next) => {
-        if (active) setPhotos(next)
+        if (active) {
+          setPhotos(next)
+          setPhotoStatus("ready")
+        }
       },
       () => {
-        if (active) setPhotoError("Could not load photos.")
+        if (active) {
+          setPhotoStatus("error")
+          setPhotoError("Could not load photos.")
+        }
       },
     )
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, photoAttempt])
+
+  const retryPhotos = () => {
+    setPhotoStatus("loading")
+    setPhotoError(null)
+    setPhotoAttempt((attempt) => attempt + 1)
+  }
 
   useEffect(() => {
     let active = true
@@ -168,14 +191,42 @@ function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: b
   if (!album) return <p>Loading album…</p>
   return (
     <>
-      {preview ? <AlbumPreview album={album} photos={photos} /> : <AlbumPage
-        album={album} photos={photos} library={library} onRemove={removePhoto}
-        onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
-        onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
-        onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
-      />}
-      {photoError && <p>{photoError}</p>}
+      {preview ? (
+        <AlbumPreviewRoute album={album} photos={photos} photoStatus={photoStatus} onRetryPhotos={retryPhotos} />
+      ) : (
+        <>
+          <AlbumPage
+            album={album} photos={photos} library={library} onRemove={removePhoto} onPhotosChanged={reloadPhotos}
+            onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
+            onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
+            onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
+          />
+          {photoError && <p>{photoError}</p>}
+        </>
+      )}
     </>
+  )
+}
+
+function AlbumPreviewRoute({
+  album, photos, photoStatus, onRetryPhotos,
+}: {
+  album: Album
+  photos: Photo[]
+  photoStatus: "loading" | "ready" | "error"
+  onRetryPhotos: () => void
+}) {
+  const { collages, status, reload } = useCollages()
+  return (
+    <AlbumPreview
+      album={album}
+      photos={photos}
+      collages={collages}
+      collagesStatus={status}
+      photoStatus={photoStatus}
+      onRetryCollages={reload}
+      onRetryPhotos={onRetryPhotos}
+    />
   )
 }
 
@@ -228,26 +279,40 @@ function UploadRoute() {
 
 function PhotosRoute() {
   const [photos, setPhotos] = useState<Photo[] | null>(null)
+  const [albums, setAlbums] = useState<Album[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
-    fetchPhotos().then(
-      (next) => {
-        if (active) setPhotos(next)
+    Promise.all([fetchPhotos(), fetchAlbums()]).then(
+      ([nextPhotos, nextAlbums]) => {
+        if (active) {
+          setPhotos(nextPhotos)
+          setAlbums(nextAlbums)
+        }
       },
       () => {
-        if (active) setError("Could not load photos. Start the server with npm start in server/.")
+        if (active) setError("Could not load photos or albums. Start the server with npm start in server/.")
       },
     )
     return () => {
       active = false
     }
-  }, [])
+  }, [loadAttempt])
 
-  if (error) return <p>{error}</p>
-  if (!photos) return <p>Loading photos…</p>
-  return <PhotoGallery photos={photos} />
+  async function reloadPhotos() {
+    const next = await fetchPhotos()
+    setPhotos(next)
+    setError(null)
+  }
+
+  if (error) return <p role="alert">{error} <button type="button" onClick={() => {
+    setError(null)
+    setLoadAttempt((attempt) => attempt + 1)
+  }}>Retry</button></p>
+  if (!photos || !albums) return <p>Loading photos and albums…</p>
+  return <><DuplicatePhotos onPhotosChanged={reloadPhotos} /><PhotoGallery photos={photos} albums={albums} /></>
 }
 
 export default function App() {

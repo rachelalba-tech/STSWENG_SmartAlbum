@@ -42,6 +42,26 @@ test("every cell has a valid grid position", () => {
   }
 })
 
+test("every cell stays within the explicit grid without overlapping another saved photo", () => {
+  for (const template of TEMPLATES) {
+    const occupied = new Set<string>()
+    for (const cell of template.cells) {
+      const colSpan = cell.colSpan ?? 1
+      const rowSpan = cell.rowSpan ?? 1
+      expect(cell.col + colSpan - 1).toBeLessThanOrEqual(template.cols)
+      expect(cell.row + rowSpan - 1).toBeLessThanOrEqual(template.rows)
+
+      for (let row = cell.row; row < cell.row + rowSpan; row++) {
+        for (let col = cell.col; col < cell.col + colSpan; col++) {
+          const position = `${row}:${col}`
+          expect(occupied.has(position)).toBe(false)
+          occupied.add(position)
+        }
+      }
+    }
+  }
+})
+
 test("templatesFor returns only templates with the requested number of cells", () => {
   for (const count of supportedCounts()) {
     const matches = templatesFor(count)
