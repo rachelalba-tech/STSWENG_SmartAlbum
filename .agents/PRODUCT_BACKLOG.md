@@ -1,6 +1,7 @@
 # PRODUCT BACKLOG
 
 Status audit: reconciled with `main` (`c7f95d5`, including PRs #23, #24, #26, #27 and #32). Pending PRs are not counted as done.
+Branch implementation updates below are explicitly labelled; they are not yet merged into `main`.
 Assignees are unchanged. No fully completed story is unassigned; US #15's collage-slot dragging is only part of that story.
 
 ## Photo Album Management
@@ -185,7 +186,7 @@ As a user, I want to upload multiple photos at once so that I can quickly add pi
 
 As a user, I want to view the uploaded photos both in a birds eye view and individually so that I can easily pick images for albums.
 
-- **Status:** Done (PR #15/#27, Alwayne) — grid, single view, keyboard navigation and album removal are tested.
+- **Status:** Done (PR #15/#27, Alwayne) — grid, single view, keyboard navigation and album removal are tested; this branch also resolves uploaded image URLs against the API origin.
 - **Estimate or Story Points:** —
 - **Priority:** High
 - **Taken by:** Alwayne and Natt
@@ -203,7 +204,7 @@ As a user, I want to view the uploaded photos both in a birds eye view and indiv
 
 As a user, I want the system to automatically identify duplicate photos so that I can remove these unnecessary copies
 
-- **Status:** Not implemented.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — owner/album-scoped SHA-256 scans, full-size review, keep choices, individual removal and confirmed explicit-ID bulk removal. Album actions preserve the library; library actions remove every owned membership of the selected physical upload. Shared memberships are not false duplicates; save failures and unreviewed new uploads are protected by tests.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** Joed and John
@@ -259,7 +260,7 @@ AC4: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to flag low-quality photos so that I will know not to include these photos in the curated albums
 
-- **Status:** Not implemented.
+- **Status:** Partial (this branch) — recommendation scoring measures resolution, exposure and detail, but there is no dedicated low-quality flag/review/deletion workflow.
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** John and Alwayne
@@ -288,7 +289,7 @@ AC3: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to recommend the best photos from the event so that I can create a well curated album without having to manually check every image
 
-- **Status:** Not implemented.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — pixel-based quality heuristics recommend clear photos; selections can be added to any existing owned album without moving them out of the source album. Scans, retries, ownership, idempotent membership persistence and bounded decoding are tested; semantic event ranking is not claimed.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** Natt and Joed
@@ -415,7 +416,7 @@ As a user, I want to apply consistent color grading across my entire album so th
 
 As a user, I want the system to recommend editorial page layouts based on my selected photos so that I can create professional-looking pages quickly
 
-- **Status:** Partial (PR #22/#26, Natt) — template selection, count guidance, swaps, saving and API origin routing exist, but `two-over-one` spans beyond its grid and `mosaic` has overlapping cells that can obscure photos. Geometry needs correction before all layouts are reliable.
+- **Status:** Implemented (PR #22/#26, Natt; this branch corrects invalid/overlapping template cells while preserving saved IDs and slot order) — exact-count selection, unsupported-count guidance, swaps and saving are tested.
 - **Estimate or Story Points:** 5
 - **Priority:** High
 - **Taken by:** Natt
@@ -453,7 +454,7 @@ AC4: It is easy to understand where to trigger this function and the process to 
 
 As a user, I want to preview my complete album collage before exporting it so that I can verify its pictures and layout
 
-- **Status:** Partial (Joed) — preview is read-only, but shows a photo list rather than the saved collage template/order; export parity (AC2) is not yet implemented.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — preview renders saved templates and photo order without editing controls in the collage stage. Loading, missing/failed photos and unavailable layouts cannot be exported; the photo-list fallback is explicitly not an exportable collage.
 - **Estimate or Story Points:** 3
 - **Priority:** High
 - **Taken by:** Joed
@@ -473,7 +474,7 @@ AC2: The preview stage will show an accurate view of what the final product will
 
 As a user, I want to export my completed photo album so that I can save it on my device
 
-- **Status:** Not implemented — no export control or downloadable collage file.
+- **Status:** Implemented (Joed; this branch, awaiting browser QA/merge) — each saved collage can download as a 2400×2400 PNG or JPEG. Canvas rendering follows a consistent preview geometry snapshot, crop and transparent-photo background; MIME, CORS, timeout and download failures are handled and unit-tested.
 - **Estimate or Story Points:** 4
 - **Priority:** High
 - **Taken by:** Joed
@@ -496,7 +497,7 @@ AC3: The photo collage is looks clear and neat even after exporting
 
 As an admin I want to be able to upload pictures, delete pictures, edit pictures, and create albums so that other people can add pictures into it
 
-- **Status:** Partial — admin login/authorization (PR #27), uploads (PR #14) and persisted album creation (PR #23) exist; photo editing, library deletion and shared multi-user albums are not implemented. No assignee.
+- **Status:** Partial — admin login/authorization (PR #27), uploads (PR #14), persisted album creation (PR #23) and duplicate-library cleanup (this branch) exist; photo editing and shared multi-user albums are not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
@@ -513,7 +514,7 @@ As an admin I want to be able to upload pictures, delete pictures, edit pictures
 
 As a user I want to be able to add pictures to albums, upload pictures, delete pictures, and edit pictures so that I can also decide on which photos to keep.
 
-- **Status:** Partial — standard-user login (PR #27), uploads (PR #14) and adding/removing album memberships (PR #23/#17) exist; photo editing and library deletion are not implemented. No assignee.
+- **Status:** Partial — standard-user login (PR #27), uploads (PR #14), adding/removing album memberships (PR #23/#17) and duplicate-library cleanup (this branch) exist; photo editing is not implemented. No assignee.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** —
