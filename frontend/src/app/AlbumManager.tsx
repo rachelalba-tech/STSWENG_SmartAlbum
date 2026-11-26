@@ -1,5 +1,5 @@
-import { Children, createContext, useContext, useEffect, useRef, useState } from "react"
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react"
+import { Children, createContext, useContext, useEffect, useId, useRef, useState } from "react"
+import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from "react"
 import { createPortal } from "react-dom"
 import {
   Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon, LayoutGrid, Images, MoreHorizontal,
@@ -141,6 +141,7 @@ function IconButton({
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
         className={`am-menu-item${danger ? " is-danger" : ""}`}
         onClick={(e) => {
           e.stopPropagation()
@@ -175,7 +176,8 @@ function IconButton({
 // portaled to <body> because .am-card clips overflow and transforms on hover.
 function ActionsMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ top: 0, right: 0 })
+  const [pos, setPos] = useState<CSSProperties>({})
+  const menuId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
@@ -189,7 +191,12 @@ function ActionsMenu({ children }: { children: ReactNode }) {
   const toggle = () => {
     if (!open && triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
+      const below = window.innerHeight - r.bottom - 12
+      const above = r.top - 12
+      const right = Math.min(window.innerWidth - 208, Math.max(8, window.innerWidth - r.right))
+      setPos(below < 260 && above > below
+        ? { bottom: window.innerHeight - r.top + 4, right, maxHeight: above }
+        : { top: r.bottom + 4, right, maxHeight: below })
     }
     setOpen((o) => !o)
   }
@@ -197,25 +204,29 @@ function ActionsMenu({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!open) return
     items()[0]?.focus()
-    // MouseEvent/KeyboardEvent are imported from React in this file, so use the DOM ones explicitly
-    const onDown = (e: globalThis.MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       const t = e.target as Node
       if (!listRef.current?.contains(t) && !triggerRef.current?.contains(t)) dismiss()
     }
     const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") close() }
-    document.addEventListener("mousedown", onDown)
+    const onScroll = (e: Event) => { if (e.target !== listRef.current) dismiss() }
+    document.addEventListener("pointerdown", onDown)
     document.addEventListener("keydown", onKey)
-    window.addEventListener("scroll", dismiss, true) // positioned once, so close if the page moves
+    window.addEventListener("scroll", onScroll, true)
     window.addEventListener("resize", dismiss)
     return () => {
-      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("pointerdown", onDown)
       document.removeEventListener("keydown", onKey)
-      window.removeEventListener("scroll", dismiss, true)
+      window.removeEventListener("scroll", onScroll, true)
       window.removeEventListener("resize", dismiss)
     }
   }, [open])
 
   const onListKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
+    if (e.key === "Tab") {
+      close()
+      return
+    }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return
     e.preventDefault()
     const list = items()
@@ -229,8 +240,10 @@ function ActionsMenu({ children }: { children: ReactNode }) {
         ref={triggerRef}
         type="button"
         className="am-btn am-btn--ghost am-btn--icon"
+        id={`${menuId}-trigger`}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={menuId}
         aria-label="More options"
         title="More options"
         onClick={(e) => { e.stopPropagation(); toggle() }}
@@ -241,10 +254,12 @@ function ActionsMenu({ children }: { children: ReactNode }) {
       {createPortal(
         <ul
           ref={listRef}
+          id={menuId}
           role="menu"
+          aria-labelledby={`${menuId}-trigger`}
           className="am-menu"
           hidden={!open}
-          style={{ top: pos.top, right: pos.right }}
+          style={pos}
           // React events bubble through portals, so keep clicks from reaching the album card
           onClick={(e) => e.stopPropagation()}
           onKeyDown={onListKeyDown}
@@ -614,9 +629,8 @@ export function AlbumManager({
   }
 
   const photoCount = (albumId: string) => photos.filter((p) => p.albumId === albumId).length
-  const albumPhotoCounts = albums.map((album) => photoCount(album.id))
-  const largest = albumPhotoCounts.length ? Math.max(...albumPhotoCounts) : 0
-  const average = albumPhotoCounts.length ? Math.round(photos.length / albumPhotoCounts.length) : 0
+  const largest = albums.reduce((max, album) => Math.max(max, photoCount(album.id)), 0)
+  const average = albums.length ? Math.round(photos.length / albums.length) : 0
 
   const coverFor = (album: ManagedAlbum) =>
     album.coverPhoto ?? photos.find((p) => p.albumId === album.id) ?? null

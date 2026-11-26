@@ -3,7 +3,7 @@ import type { Album, Photo } from "./api.ts"
 import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
 
-export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onPhotosChanged }: {
+export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onPhotosChanged, onRotate }: {
   album: Album
   photos?: Photo[]
   library?: Photo[] | null
@@ -12,6 +12,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   onReorder?: (ids: string[]) => Promise<void>
   onAdd?: (ids: string[]) => Promise<void>
   onPhotosChanged?: () => void | Promise<void>
+  onRotate?: (photo: Photo, degrees: number) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(album.title)
@@ -54,7 +55,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
       {album.description && <p>{album.description}</p>}
       <DuplicatePhotos albumId={album.id} onPhotosChanged={onPhotosChanged} />
       {error && <p role="alert">{error}</p>}
-      {hasTools && <div className="album-toolbar" role="toolbar" aria-label="Album options">
+      {hasTools && <div className="album-toolbar" role="group" aria-label="Album options">
         {onUpdate && !editing && <button type="button" onClick={() => {
           setTitle(album.title); setDescription(album.description ?? ""); setEditing(true)
         }}>Edit album details</button>}
@@ -87,7 +88,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
       {order && onReorder && <p>Drag photos, or use Move earlier / Move later, then save.</p>}
       {!order ? <PhotoGallery photos={photos} title="Album photos" subtitle={`${photos.length} photos in this album`}
         emptyTitle="No photos in this album" emptyDescription="Upload photos to this album and they will appear here."
-        busy={busy} onRemove={onRemove ? (id) => void save(async () => { await onRemove(id) }, () => {}) : undefined} />
+        busy={busy} onSaveRotation={onRotate} onRemove={onRemove ? (id) => void save(async () => { await onRemove(id) }, () => {}) : undefined} />
       : <ul className="photos" style={{ listStyle: "none", padding: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
         {displayed.map((photo, index) => <li key={photo.id} draggable={!!order && !busy}
           onDragStart={() => setDragged(photo.id)} onDragEnd={() => setDragged(null)}

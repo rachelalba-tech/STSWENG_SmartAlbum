@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, saveRotatedPhoto, updateAlbum } from "./api.ts"
 import type { Album, Photo, User } from "./api.ts"
 import { LoginPage } from "./LoginPage.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
@@ -30,6 +30,14 @@ const toManaged = (a: Album): ManagedAlbum => ({
   collaborationEnabled: false,
   collaborators: [],
 })
+
+function replaceRotatedPhoto(photos: Photo[], previousSrc: string, saved: Photo): Photo[] {
+  return photos.map((p) =>
+    p.id === saved.id || p.src === previousSrc
+      ? { ...p, src: saved.src, thumbnail: saved.thumbnail }
+      : p,
+  )
+}
 
 function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
@@ -198,6 +206,11 @@ function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: b
             onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
             onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
             onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
+            onRotate={async (photo, degrees) => {
+              const saved = await saveRotatedPhoto(photo, degrees)
+              setPhotos((prev) => replaceRotatedPhoto(prev, photo.src, saved))
+              setLibrary((prev) => (prev ? replaceRotatedPhoto(prev, photo.src, saved) : prev))
+            }}
           />
           {photoError && <p>{photoError}</p>}
         </>
@@ -250,25 +263,19 @@ function UploadRoute() {
 
   if (error) return <p>{error}</p>
   if (!albums) return <p>Loading albums…</p>
-  if (albums.length === 0) {
-    return (
-      <div className="page">
-        <h2>Upload Photos</h2>
-        <p>
-          Photos are stored in albums. <a href="#/">Create an album</a> first.
-        </p>
-      </div>
-    )
-  }
   return (
     <div className="page">
       <PhotoUpload
         albums={albums.map((a) => ({ id: a.id, name: a.title }))}
         onUploaded={(added) => setLastAlbumId(added[0].albumId)}
       />
-      {lastAlbumId && (
+      {lastAlbumId !== null && (
         <p>
-          <a href={`#/albums/${encodeURIComponent(lastAlbumId)}`}>View the album</a>
+          {lastAlbumId ? (
+            <a href={`#/albums/${encodeURIComponent(lastAlbumId)}`}>View the album</a>
+          ) : (
+            <a href="#/photos">View in Photos</a>
+          )}
         </p>
       )}
     </div>
@@ -310,7 +317,13 @@ function PhotosRoute() {
     setLoadAttempt((attempt) => attempt + 1)
   }}>Retry</button></p>
   if (!photos || !albums) return <p>Loading photos and albums…</p>
-  return <><DuplicatePhotos onPhotosChanged={reloadPhotos} /><PhotoGallery photos={photos} albums={albums} /></>
+  return <>
+    <DuplicatePhotos onPhotosChanged={reloadPhotos} />
+    <PhotoGallery photos={photos} albums={albums} onSaveRotation={async (photo, degrees) => {
+      const saved = await saveRotatedPhoto(photo, degrees)
+      setPhotos((prev) => (prev ? replaceRotatedPhoto(prev, photo.src, saved) : prev))
+    }} />
+  </>
 }
 
 export default function App() {
@@ -340,7 +353,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <h1 className="brand"><img className="brand-logo" src="icon.svg" alt="Company Logo" width="25" height="auto"></img> 
+        <h1 className="brand"><img className="brand-logo" src="icon.svg" alt="" width="25" height="25" />
         Smart Photo Album</h1>
         <AppTabs active={page} />
         <div className="app-account">

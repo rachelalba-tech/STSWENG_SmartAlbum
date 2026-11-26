@@ -247,6 +247,20 @@ test("the action menu supports arrow keys and restores focus after Escape", () =
   expect(document.activeElement).toBe(trigger)
 })
 
+test("the album action menu opens above a low trigger and closes on Tab", () => {
+  setup([album({ id: "a", name: "A" })])
+  const trigger = within(card("A")).getByRole("button", { name: "More options" })
+  vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(300, window.innerHeight - 42, 36, 36),
+  )
+  fireEvent.click(trigger)
+  const menu = screen.getByRole("menu", { name: "More options" })
+  expect(menu.style.bottom).toBe("46px")
+  fireEvent.keyDown(within(menu).getAllByRole("menuitem")[0], { key: "Tab" })
+  expect(menu.hidden).toBe(true)
+  expect(document.activeElement).toBe(trigger)
+})
+
 // Create
 
 test("New album opens a dialog with Create disabled until a name is typed", () => {
