@@ -37,6 +37,28 @@ Uploaded Photo Is Still There After Refresh
     Wait Until Element Is Visible    css:.pg-subtitle
     Library Should Contain Photos    ${expected}
 
+Rotate An Uploaded Photo And Persist The Result
+    [Tags]    US-17
+    ${album}=    Unique Album Name
+    Create Album    ${album}
+    Go To Upload Page    ${album}
+    Select Photo File    sample.jpg
+    Upload Queued Photos    1
+    Go To Albums Page
+    Open Album    ${album}
+    Click Button    css:.pg-tile
+    Wait Until Keyword Succeeds    10s    200ms    Photo Is Decoded
+    ${original}=    Execute Javascript    const i = document.querySelector('.pg-photo'); return [i.naturalWidth, i.naturalHeight];
+    Click Button    css:[aria-label="Rotate clockwise"]
+    Click Button    xpath://button[normalize-space()='Save changes']
+    Wait Until Element Contains    css:.pg-rotate-status    Rotation saved
+    Reload Page
+    Wait Until Element Is Visible    css:.pg-tile
+    Click Button    css:.pg-tile
+    Wait Until Keyword Succeeds    10s    200ms    Photo Is Decoded
+    ${rotated}=    Execute Javascript    const i = document.querySelector('.pg-photo'); return [i.naturalHeight, i.naturalWidth];
+    Should Be Equal    ${rotated}    ${original}
+
 Non Image File Is Rejected
     [Tags]    US-9    TC-04
     ${album}=    Unique Album Name
@@ -94,3 +116,24 @@ Removing A Queued Photo Does Not Upload It
     Upload Queued Photos    1
     ${expected}=    Evaluate    $before + 1
     Library Should Contain Photos    ${expected}
+
+Upload Photo Without Selecting An Album
+    [Tags]    US-9
+    ${before}=    Get Photo Count
+    Go To    ${ALBUMS_URL}/#/upload
+    Wait Until Element Is Visible    id:pu-album
+    List Selection Should Be    id:pu-album    No album (Photos only)
+    Select Photo File    sample.png
+    Upload Queued Photos    1
+    Wait Until Element Is Visible    link:View in Photos
+    Click Link    View in Photos
+    ${expected}=    Evaluate    $before + 1
+    Library Should Contain Photos    ${expected}
+    Reload Page
+    Wait Until Element Is Visible    css:.pg-subtitle
+    Library Should Contain Photos    ${expected}
+
+*** Keywords ***
+Photo Is Decoded
+    ${loaded}=    Execute Javascript    return (document.querySelector('.pg-photo')?.naturalWidth ?? 0) > 0;
+    Should Be True    ${loaded}

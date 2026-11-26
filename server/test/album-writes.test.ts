@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -13,7 +13,7 @@ import type { StoredPhoto } from "../src/photos.ts"
 
 async function fixture(run: (f: {
   base: string; albums: Album[]; photos: StoredPhoto[]; file: string; photosFile: string; uploads: string
-  collages: StoredCollage[]; collagesFile: string; fail: (value: boolean) => void
+  collages: StoredCollage[]; collagesFile: string; fail: (value: boolean) => void; failPhotos: (value: boolean) => void
 }) => Promise<void>) {
   const dir = mkdtempSync(join(tmpdir(), "album-writes-"))
   const uploads = join(dir, "uploads")
@@ -32,17 +32,29 @@ async function fixture(run: (f: {
   savePhotos(photosFile, photos)
   saveCollages(collagesFile, collages)
   let failWrites = false
+  let failPhotoWrites = false
   const server = createAlbumServer({
     albums, ownerId: "demo-user", saveAlbums: (all) => {
       if (failWrites) throw new Error("simulated disk failure")
       saveAlbums(file, all)
-    }, photoStorage: { photos, uploadsDir: uploads, save: (all) => savePhotos(photosFile, all) },
+    }, photoStorage: {
+      photos, uploadsDir: uploads, save: (all) => {
+        if (failPhotoWrites) throw new Error("simulated photo disk failure")
+        savePhotos(photosFile, all)
+      },
+    },
     collageStorage: { collages, save: (all) => saveCollages(collagesFile, all) },
   })
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
   const address = server.address()
   if (!address || typeof address === "string") throw new Error("no test port")
-  try { await run({ base: `http://127.0.0.1:${address.port}`, albums, photos, file, photosFile, uploads, collages, collagesFile, fail: (v) => { failWrites = v } }) }
+  try {
+    await run({
+      base: `http://127.0.0.1:${address.port}`, albums, photos, file, photosFile, uploads, collages, collagesFile,
+      fail: (v) => { failWrites = v },
+      failPhotos: (v) => { failPhotoWrites = v },
+    })
+  }
   finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))
     rmSync(dir, { recursive: true, force: true })
@@ -136,5 +148,47 @@ test("uploads persist and serve exact bytes, rejecting empty/foreign/unsupported
     assert.equal((await fetch(`${base}/api/albums/a/photos`, { method: "POST", headers: { "content-type": "image/png" } })).status, 400)
     assert.equal((await fetch(`${base}/api/albums/a/photos`, { method: "POST", body: "pdf" })).status, 415)
     assert.equal((await fetch(`${base}/api/albums/foreign/photos`, { method: "POST", headers: { "content-type": "image/png" }, body: bytes })).status, 404)
+  })
+})
+
+test("replacing a photo image updates all shared memberships, persists bytes, and rolls back on save failure", async () => {
+  await fixture(async ({ base, photosFile, uploads, photos, failPhotos }) => {
+    const bytes = new Uint8Array([255, 216, 255, 224])
+    const put = (id: string, init: RequestInit) => fetch(`${base}/api/photos/${id}/image`, {
+      method: "PUT", ...init, headers: { "x-original-image": `/api/uploads/${id}.png`, ...init.headers },
+    })
+
+    // Share "one" into a second album so both memberships reference the same file.
+    const secondAlbum = await (await fetch(`${base}/api/albums`, json("POST", { title: "Second" }))).json()
+    const added = await (await fetch(`${base}/api/albums/${secondAlbum.id}/photos`, json("PATCH", { photoIds: ["one"] }))).json()
+    const copyId = added[0].id as string
+
+    const res = await put("one", { headers: { "content-type": "image/jpeg" }, body: bytes })
+    assert.equal(res.status, 200)
+    const updated = await res.json()
+    assert.ok(updated.src.endsWith(".jpg"))
+    assert.notEqual(updated.src, "/api/uploads/one.png")
+    assert.equal(existsSync(join(uploads, "one.png")), false)
+    assert.deepEqual(new Uint8Array(await (await fetch(base + updated.src)).arrayBuffer()), bytes)
+
+    const persisted = loadPhotos(photosFile)
+    assert.equal(persisted.find((p) => p.id === "one")?.src, updated.src)
+    assert.equal(persisted.find((p) => p.id === copyId)?.src, updated.src)
+    assert.equal((await put("one", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 409)
+    assert.equal(loadPhotos(photosFile).find((p) => p.id === "one")?.src, updated.src)
+
+    // Validation & ownership checks
+    assert.equal((await put("private", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 404)
+    assert.equal((await put("missing", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 404)
+    assert.equal((await put("two", { body: "x" })).status, 415)
+    assert.equal((await put("two", { headers: { "content-type": "image/png" } })).status, 400)
+
+    // Rollback on save error keeps original metadata and original file intact
+    const before = JSON.stringify(photos)
+    failPhotos(true)
+    assert.equal((await put("two", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 500)
+    failPhotos(false)
+    assert.equal(JSON.stringify(photos), before)
+    assert.equal(existsSync(join(uploads, "two.png")), true)
   })
 })

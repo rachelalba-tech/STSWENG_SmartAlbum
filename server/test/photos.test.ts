@@ -207,3 +207,99 @@ test("PATCH rolls back in-memory photo memberships when persistence fails", asyn
     rmSync(app.dir, { recursive: true, force: true })
   }
 })
+
+test("POST /api/photos uploads to the library without an album, persists, and can be added to an album later", async () => {
+  const app = await startServer([], [albums[0]])
+  try {
+    const uploaded = await fetch(`${app.base}/api/photos`, {
+      method: "POST",
+      headers: { "content-type": "image/png", "x-file-name": encodeURIComponent("standalone.png") },
+      body: new Uint8Array([137, 80, 78, 71]),
+    })
+    assert.equal(uploaded.status, 201)
+    const created = await uploaded.json() as { id: string; albumId: string; title: string; src: string }
+    assert.equal(created.albumId, "")
+    assert.equal(created.title, "standalone")
+
+    const library = await (await fetch(`${app.base}/api/photos`)).json() as { id: string; albumId: string; albumIds?: string[] }[]
+    assert.deepEqual(library.map((p) => p.id), [created.id])
+    assert.equal(library[0].albumId, "")
+    assert.deepEqual(library[0].albumIds, [])
+
+    const inAlbum = await (await fetch(`${app.base}/api/photos?albumId=opening`)).json() as { id: string }[]
+    assert.deepEqual(inAlbum, [])
+
+    const image = await fetch(`${app.base}${created.src}`)
+    assert.equal(image.status, 200)
+    assert.deepEqual(new Uint8Array(await image.arrayBuffer()), new Uint8Array([137, 80, 78, 71]))
+
+    const persisted = JSON.parse(readFileSync(app.photosFile, "utf8")) as StoredPhoto[]
+    assert.equal(persisted.length, 1)
+    assert.equal(persisted[0].albumId, "")
+
+    const added = await fetch(`${app.base}/api/albums/opening/photos`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ photoIds: [created.id] }),
+    })
+    assert.equal(added.status, 200)
+    const albumPhotos = await added.json() as { albumId: string }[]
+    assert.equal(albumPhotos.length, 1)
+    assert.equal(albumPhotos[0].albumId, "opening")
+
+    const libraryAfterAdd = await (await fetch(`${app.base}/api/photos`)).json() as { id: string; albumIds?: string[] }[]
+    assert.deepEqual(libraryAfterAdd[0].albumIds, ["opening"])
+  } finally {
+    await app.close()
+    rmSync(app.dir, { recursive: true, force: true })
+  }
+})
+
+test("POST /api/photos works when no albums exist, validates uploads, and rolls back on save failure", async () => {
+  const app = await startServer([], [])
+  try {
+    const unsupported = await fetch(`${app.base}/api/photos`, {
+      method: "POST",
+      headers: { "content-type": "text/plain", "x-file-name": "notes.txt" },
+      body: "hello",
+    })
+    assert.equal(unsupported.status, 415)
+
+    const empty = await fetch(`${app.base}/api/photos`, {
+      method: "POST",
+      headers: { "content-type": "image/png", "x-file-name": "empty.png" },
+      body: new Uint8Array(0),
+    })
+    assert.equal(empty.status, 400)
+
+    const ok = await fetch(`${app.base}/api/photos`, {
+      method: "POST",
+      headers: { "content-type": "image/jpeg", "x-file-name": "solo.jpg" },
+      body: new Uint8Array([255, 216, 255]),
+    })
+    assert.equal(ok.status, 201)
+    assert.equal(app.storage.photos.length, 1)
+  } finally {
+    await app.close()
+    rmSync(app.dir, { recursive: true, force: true })
+  }
+
+  const failing = await startServer([], [], () => {
+    throw new Error("disk full")
+  })
+  const originalError = console.error
+  console.error = () => {}
+  try {
+    const res = await fetch(`${failing.base}/api/photos`, {
+      method: "POST",
+      headers: { "content-type": "image/jpeg", "x-file-name": "fail.jpg" },
+      body: new Uint8Array([255, 216, 255]),
+    })
+    assert.equal(res.status, 500)
+    assert.equal(failing.storage.photos.length, 0)
+  } finally {
+    console.error = originalError
+    await failing.close()
+    rmSync(failing.dir, { recursive: true, force: true })
+  }
+})

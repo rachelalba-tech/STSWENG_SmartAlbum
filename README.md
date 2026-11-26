@@ -108,7 +108,7 @@ node --experimental-strip-types tests/run-browser.mjs
 
 The harness starts its own disposable API and built frontend on loopback ports. It forces the
 local API even if `.env` names a deployed server; no development server or seeded data is used.
-It runs 13 headless Chrome tests and checks persisted image bytes. Temporary stores are removed
+It runs the headless Chrome suite and checks persisted image bytes. Temporary stores are removed
 on exit. Selenium Manager downloads a matching driver when needed (network access required).
 
 For a virtual environment, pass its Python executable as the first argument to the Node command,

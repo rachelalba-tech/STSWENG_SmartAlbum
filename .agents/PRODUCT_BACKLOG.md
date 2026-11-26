@@ -348,7 +348,7 @@ As a user, I want to crop photos within album pages so that I do not need to use
 
 As a user I want to rotate photos within the application so that I do not need to use a separate app to make edits
 
-- **Status:** Not implemented.
+- **Status:** Done (PR #34) — 90° clockwise/counter-clockwise rotation with save and revert in single view for static photos.
 - **Estimate or Story Points:** —
 - **Priority:** Middle
 - **Taken by:** Alwayne

@@ -50,17 +50,23 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   them out of other albums, and drag/button reordering with an explicit save (US #4/#6/#8).
   The album page shows the title, a link back, and that
   album's photos, with a control to take a photo out of that album. Upload sends several JPG, PNG,
-  GIF, or WebP files (10 MB each) to an album the API already has (US #9, Natt, PR #14). The gallery
+  GIF, or WebP files (10 MB each) either directly to the photo library (default, works with zero
+  albums) or into an existing album (US #9; PRs #14 and #37). The gallery
   toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
+  Single view also supports 90° rotation with save and revert (US #17; PR #34).
+  Saving re-encodes static images and does not preserve embedded metadata; animated images cannot be saved.
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
   and loads `server/data/albums.json`, `server/data/photos.json` and `server/data/collages.json`, and creates
   `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
   `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
-  `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
-  owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
+  `GET /api/photos?albumId=` limits the list to one album. `POST /api/photos` stores an owned
+  library-only upload (`albumId: ""`) without requiring an album, and `POST /api/albums/:id/photos`
+  stores an owned upload into an album (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
-  and leaves the file in the library (US #7, Joed). Albums have `id`, `title`, `ownerId` and optional `description`.
+  and leaves the file in the library (US #7, Joed). `PUT /api/photos/:id/image` replaces an owned
+  photo's stored image file across all shared memberships: it rejects stale edits, rolls back on save
+  error, and cleans up the replaced file if unreferenced (US #17). Albums have `id`, `title`, `ownerId` and optional `description`.
   `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
   `PATCH /api/albums/:id/photos` adds immutable-file memberships; `PATCH /api/albums/:id/photos/order`
   validates and saves an exact permutation. The library lists each physical file once; album lists sort
@@ -96,7 +102,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   allowed browsers are the production and staging frontends and loopback HTTP. HTTPS cookies use SameSite=None
   and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
   The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
-  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo editing,
+  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping, color grading,
   visual-similarity detection and dedicated low-quality flagging are not implemented.
   Template collages and saved-collage editing are implemented (PR #22; US #21, with template geometry
   defects corrected on this branch). Collaboration and album cover selection remain page-local prototypes.
@@ -135,9 +141,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
   Stale approvals are dismissed when the head or merge base changes; approval by someone other than
   the last pusher is not required by the live ruleset.
-- **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
+- **Formatter / end-to-end tests:** no formatter. `tests/` has 15 Robot/Selenium browser tests:
   creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
-  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
+  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32), and
+  library-only uploads and photo rotation that survive reload (PRs #37 and #34).
   `tests/run-browser.mjs` builds with a forced local API, creates disposable JSON/upload stores,
   checks persisted photo bytes, and closes servers/removes its stores after success or failure.
   Original image fixtures and their ZIP remain unchanged; WebP fixture casing is `sample.WEBP`.

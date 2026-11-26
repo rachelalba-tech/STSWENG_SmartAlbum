@@ -39,9 +39,9 @@ async function runPool<T>(items: T[], limit: number, worker: (item: T) => Promis
 
 // Component
 export function PhotoUpload({ albums, onUploaded, upload = uploadPhoto }: PhotoUploadProps) {
-  const [chosenId, setAlbumId] = useState(albums[0]?.id ?? "")
-  // Fall back to the first album if the chosen one is gone or nothing was chosen yet
-  const albumId = albums.some((a) => a.id === chosenId) ? chosenId : (albums[0]?.id ?? "")
+  const [chosenId, setAlbumId] = useState("")
+  // Fall back to library-only upload if the chosen album is no longer present
+  const albumId = chosenId === "" || albums.some((a) => a.id === chosenId) ? chosenId : ""
   const [items, setItems] = useState<Item[]>([])
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -135,7 +135,7 @@ export function PhotoUpload({ albums, onUploaded, upload = uploadPhoto }: PhotoU
   const doneCount = items.filter((i) => i.status === "done").length
 
   const handleUpload = async () => {
-    if (busy || !albumId || pending.length === 0) return
+    if (busy || pending.length === 0) return
     setBusy(true)
     setNotice(null)
     const batch = pending
@@ -173,6 +173,7 @@ export function PhotoUpload({ albums, onUploaded, upload = uploadPhoto }: PhotoU
       <div className="pu-album">
         <label htmlFor="pu-album">Upload to album</label>
         <select id="pu-album" value={albumId} onChange={(e) => setAlbumId(e.target.value)} disabled={busy}>
+          <option value="">No album (Photos only)</option>
           {albums.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -244,7 +245,7 @@ export function PhotoUpload({ albums, onUploaded, upload = uploadPhoto }: PhotoU
             type="button"
             className="pu-btn pu-btn--primary"
             onClick={handleUpload}
-            disabled={busy || !albumId || pending.length === 0}
+            disabled={busy || pending.length === 0}
           >
             {busy ? "Uploading…" : `Upload ${pending.length} photo${pending.length !== 1 ? "s" : ""}`}
           </button>
