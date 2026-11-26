@@ -34,30 +34,5 @@
     "tags": [],
     "ownerId": "demo-user",
     "file": "993fd8bd-508c-4656-8705-da2007956a54.jpg"
-  },
-  {
-    "id": "a2876ef5-d175-45a1-b37a-8bba7ad752b4",
-    "src": "/api/uploads/a2876ef5-d175-45a1-b37a-8bba7ad752b4.jpg",
-    "thumbnail": "/api/uploads/a2876ef5-d175-45a1-b37a-8bba7ad752b4.jpg",
-    "title": "tester2",
-    "description": "",
-    "date": "2026-11-24",
-    "albumId": "opening",
-    "tags": [],
-    "ownerId": "demo-user",
-    "file": "a2876ef5-d175-45a1-b37a-8bba7ad752b4.jpg",
-    "position": 3
-  },
-  {
-    "id": "b6506728-f5e4-49a7-bb7a-9617004531ff",
-    "src": "/api/uploads/b6506728-f5e4-49a7-bb7a-9617004531ff.png",
-    "thumbnail": "/api/uploads/b6506728-f5e4-49a7-bb7a-9617004531ff.png",
-    "title": "mealy",
-    "description": "",
-    "date": "2026-11-24",
-    "albumId": "",
-    "tags": [],
-    "ownerId": "demo-user",
-    "file": "b6506728-f5e4-49a7-bb7a-9617004531ff.png"
   }
 ]

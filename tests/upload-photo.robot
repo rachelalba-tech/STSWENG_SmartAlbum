@@ -103,7 +103,8 @@ Upload Photo Without Selecting An Album
     List Selection Should Be    id:pu-album    No album (Photos only)
     Select Photo File    sample.png
     Upload Queued Photos    1
-    Wait Until Page Contains Link    View in Photos
+    Wait Until Element Is Visible    link:View in Photos
+    Click Link    View in Photos
     ${expected}=    Evaluate    $before + 1
     Library Should Contain Photos    ${expected}
     Reload Page

@@ -169,3 +169,20 @@ test("adds a recommendation to an existing album and keeps add failures retryabl
     body: JSON.stringify({ photoIds: ["sharp-photo"] }),
   })
 })
+
+test("single view keeps all memberships added during a gallery visit", async () => {
+  stubImageAnalysis()
+  const destinations = [...albums, { id: "second", title: "Second event", ownerId: "demo-user" }]
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json([photos[0]])))
+  render(<PhotoGallery photos={photos} albums={destinations} />)
+  fireEvent.click(screen.getByRole("button", { name: "Recommend best photos" }))
+
+  const select = await screen.findByLabelText("Add recommended photos to")
+  for (const album of destinations) {
+    fireEvent.change(select, { target: { value: album.id } })
+    fireEvent.click(await screen.findByRole("button", { name: "Add to album" }))
+    await screen.findByText(`Added Best shot to ${album.title}.`)
+  }
+  fireEvent.click(screen.getByRole("button", { name: "Single" }))
+  expect(screen.getByText("Albums: Selected event, Second event")).toBeTruthy()
+})

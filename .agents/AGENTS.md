@@ -133,9 +133,10 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
   Stale approvals are dismissed when the head or merge base changes; approval by someone other than
   the last pusher is not required by the live ruleset.
-- **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
+- **Formatter / end-to-end tests:** no formatter. `tests/` has 14 Robot/Selenium browser tests:
   creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
-  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
+  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32), and
+  a library-only upload that survives reload (PR #37).
   `tests/run-browser.mjs` builds with a forced local API, creates disposable JSON/upload stores,
   checks persisted photo bytes, and closes servers/removes its stores after success or failure.
   Original image fixtures and their ZIP remain unchanged; WebP fixture casing is `sample.WEBP`.
