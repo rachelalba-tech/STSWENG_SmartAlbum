@@ -96,7 +96,7 @@ function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
         onAlbumDelete={async (id) => {
           await deleteAlbum(id)
           setAlbums((prev) => (prev ?? []).filter((a) => a.id !== id))
-          setPhotos((prev) => prev.map((p) => p.albumId === id ? { ...p, albumId: "" } : p))
+          setPhotos((prev) => prev.filter((p) => p.albumId !== id))
           reload()
         }}
         onAlbumSelect={(id) => {

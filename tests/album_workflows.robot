@@ -80,6 +80,7 @@ Library Copies Preserve Source Order And Work In Collages
     Click Album Action    Delete album
     Handle Alert    ACCEPT
     Wait Until Page Does Not Contain Element    css:[aria-label="Open ${target}"]
+    Element Text Should Be    xpath://div[span[normalize-space()='Album photo memberships']]/strong    4
     Reload Page
     Wait Until Page Contains    Photo albums
     Page Should Not Contain Element    css:[aria-label="Open ${target}"]
