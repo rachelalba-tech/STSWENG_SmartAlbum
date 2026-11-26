@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { expect, test, vi } from "vitest"
-import type { Photo } from "../src/app/api.ts"
+import type { Album, Photo } from "../src/app/api.ts"
 import { PhotoGallery } from "../src/app/PhotoGallery.tsx"
 
 const photos: Photo[] = [
@@ -164,4 +164,40 @@ test("failed rotation save keeps pending orientation and shows an error for retr
   expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy()
   fireEvent.click(screen.getByRole("button", { name: "Revert" }))
   expect(screen.queryByRole("alert")).toBeNull()
+})
+
+test("single view shows image name and album membership above the gray frame and removes the name below the photo", () => {
+  const albums: Album[] = [
+    { id: "opening", title: "Opening ceremony", ownerId: "demo-user" },
+    { id: "reception", title: "Reception", ownerId: "demo-user" },
+  ]
+  const libraryPhotos: Photo[] = [
+    { ...photos[0], albumId: "opening", albumIds: ["opening"] },
+    { ...photos[1], albumId: "", albumIds: [] },
+    { ...photos[2], albumId: "opening", albumIds: ["opening", "reception"] },
+  ]
+
+  const { container } = render(<PhotoGallery photos={libraryPhotos} albums={albums} />)
+  fireEvent.click(screen.getByRole("button", { name: "Single" }))
+
+  const meta = container.querySelector(".pg-single-meta")!
+  const stage = container.querySelector(".pg-stage")!
+  const caption = container.querySelector(".pg-figure figcaption")!
+
+  expect(meta).toBeTruthy()
+  expect(stage.contains(meta)).toBe(false)
+  expect(meta.compareDocumentPosition(stage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(meta.textContent).toContain("First photo")
+  expect(meta.textContent).toContain("Album: Opening ceremony")
+  expect(caption.textContent).not.toContain("First photo")
+  expect(caption.textContent).toContain("1 of 3")
+
+  fireEvent.click(screen.getByRole("button", { name: "Next photo" }))
+  expect(meta.textContent).toContain("Second photo")
+  expect(meta.textContent).toContain("No album")
+  expect(caption.textContent).not.toContain("Second photo")
+
+  fireEvent.click(screen.getByRole("button", { name: "Next photo" }))
+  expect(meta.textContent).toContain("Third photo")
+  expect(meta.textContent).toContain("Albums: Opening ceremony, Reception")
 })

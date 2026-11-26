@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react"
 import { Check, ChevronLeft, ChevronRight, Grid3X3, Maximize2, RotateCcw, RotateCw, Undo2 } from "lucide-react"
 import "../styles/PhotoGallery.css"
-import type { Photo } from "./api.ts"
+import { addPhotosToAlbum, type Album, type Photo } from "./api.ts"
+import { analyzePhoto, type PhotoQuality } from "./photoQuality.ts"
 
-type GalleryView = "grid" | "single"
+type GalleryView = "grid" | "single" | "recommendations"
+type PhotoAnalysis = { quality?: PhotoQuality; error?: string }
 
 type PhotoGalleryProps = {
   photos: Photo[]
+  albums?: Album[]
   title?: string
   subtitle?: string
   emptyTitle?: string
@@ -25,10 +28,11 @@ function describeRotation(netDegrees: number): string {
 
 export function PhotoGallery({
   photos,
+  albums,
   title = "All photos",
   subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
   emptyTitle = "No photos yet",
-  emptyDescription = "Upload photos to an album and they will appear here.",
+  emptyDescription = "Upload photos and they will appear here.",
   onRemove,
   onSaveRotation,
   busy = false,
@@ -39,12 +43,20 @@ export function PhotoGallery({
   const [savingRotation, setSavingRotation] = useState(false)
   const [rotationError, setRotationError] = useState<string | null>(null)
   const [rotationSavedId, setRotationSavedId] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<Record<string, PhotoAnalysis>>({})
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [retryingPhotoId, setRetryingPhotoId] = useState<string | null>(null)
+  const [selectedAlbumId, setSelectedAlbumId] = useState("")
+  const [addingPhotoId, setAddingPhotoId] = useState<string | null>(null)
+  const [addedToByPhoto, setAddedToByPhoto] = useState<Record<string, string[]>>({})
+  const [addError, setAddError] = useState<string | null>(null)
+  const [addStatus, setAddStatus] = useState<{ message: string; albumId: string } | null>(null)
   const safeIndex = Math.min(selectedIndex, Math.max(photos.length - 1, 0))
 
-  const goToIndex = (updater: number | ((current: number) => number)) => {
+  const goToIndex = (index: number) => {
     setRotationError(null)
     setRotationSavedId(null)
-    setSelectedIndex(updater)
+    setSelectedIndex(index)
   }
 
   useEffect(() => {
@@ -73,6 +85,53 @@ export function PhotoGallery({
     setView("single")
   }
 
+  async function runRecommendations() {
+    setAnalysisLoading(true)
+    setAnalysis({})
+    const results: Array<[string, PhotoAnalysis]> = []
+    for (const photo of photos) {
+      try {
+        results.push([photo.id, { quality: await analyzePhoto(photo) }])
+      } catch (error) {
+        results.push([photo.id, { error: error instanceof Error ? error.message : "Could not analyze this photo" }])
+      }
+    }
+    setAnalysis(Object.fromEntries(results))
+    setAnalysisLoading(false)
+  }
+
+  async function retryAnalysis(photo: Photo) {
+    setRetryingPhotoId(photo.id)
+    try {
+      const quality = await analyzePhoto(photo)
+      setAnalysis((current) => ({ ...current, [photo.id]: { quality } }))
+    } catch (error) {
+      setAnalysis((current) => ({
+        ...current,
+        [photo.id]: { error: error instanceof Error ? error.message : "Could not analyze this photo" },
+      }))
+    } finally {
+      setRetryingPhotoId(null)
+    }
+  }
+
+  async function addPhoto(photo: Photo) {
+    const album = (albums ?? []).find((item) => item.id === selectedAlbumId)
+    if (!album) return
+    setAddingPhotoId(photo.id)
+    setAddError(null)
+    setAddStatus(null)
+    try {
+      await addPhotosToAlbum(album.id, [photo.id])
+      setAddedToByPhoto((current) => ({ ...current, [photo.id]: [...(current[photo.id] ?? []), album.id] }))
+      setAddStatus({ message: `Added ${photo.title || "photo"} to ${album.title}.`, albumId: album.id })
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : "Could not add photo to album. Try again.")
+    } finally {
+      setAddingPhotoId(null)
+    }
+  }
+
   const selected = photos[safeIndex]
   const angle = selected ? (rotations[selected.id] ?? 0) : 0
   const netDegrees = ((((angle / 90) % 4) + 4) % 4) * 90
@@ -80,7 +139,7 @@ export function PhotoGallery({
   const hasPendingRotation = netDegrees !== 0
 
   const rotateSelected = (delta: 90 | -90) => {
-    if (!selected || savingRotation) return
+    if (!selected || busy || savingRotation) return
     setRotationError(null)
     setRotationSavedId(null)
     setRotations((current) => ({ ...current, [selected.id]: (current[selected.id] ?? 0) + delta }))
@@ -98,7 +157,7 @@ export function PhotoGallery({
   }
 
   const handleSaveRotation = async () => {
-    if (!onSaveRotation || !selected || !hasPendingRotation || savingRotation) return
+    if (!onSaveRotation || !selected || !hasPendingRotation || busy || savingRotation) return
     const target = selected
     setSavingRotation(true)
     setRotationError(null)
@@ -117,6 +176,23 @@ export function PhotoGallery({
       setSavingRotation(false)
     }
   }
+  const selectedAlbumNames = selected && albums !== undefined
+    ? (() => {
+        const ids = new Set(selected.albumIds ?? (selected.albumId ? [selected.albumId] : []))
+        for (const id of addedToByPhoto[selected.id] ?? []) ids.add(id)
+        return [...ids]
+          .map((id) => albums.find((album) => album.id === id)?.title)
+          .filter((name): name is string => Boolean(name))
+      })()
+    : []
+  const recommended = photos
+    .flatMap((photo) => {
+      const quality = analysis[photo.id]?.quality
+      return quality?.recommended ? [{ photo, quality }] : []
+    })
+    .sort((a, b) => b.quality.score - a.quality.score)
+  const failedAnalysis = photos.filter((photo) => analysis[photo.id]?.error)
+  const notRecommendedCount = photos.filter((photo) => analysis[photo.id]?.quality && !analysis[photo.id].quality?.recommended).length
 
   return (
     <section className="pg" aria-labelledby="photos-heading">
@@ -148,6 +224,20 @@ export function PhotoGallery({
               <Maximize2 size={17} aria-hidden="true" />
               Single
             </button>
+            {albums !== undefined && (
+              <button
+                type="button"
+                className={`pg-view-button${view === "recommendations" ? " is-active" : ""}`}
+                aria-pressed={view === "recommendations"}
+                disabled={analysisLoading}
+                onClick={() => {
+                  setView("recommendations")
+                  void runRecommendations()
+                }}
+              >
+                Recommend best photos
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -158,6 +248,80 @@ export function PhotoGallery({
           <h3>{emptyTitle}</h3>
           <p>{emptyDescription}</p>
           <a href="#/upload">Upload photos</a>
+        </div>
+      ) : view === "recommendations" ? (
+        <div className="pg-recommendations" aria-labelledby="pg-recommendations-heading">
+          <div className="pg-recommendations-header">
+            <div>
+              <h3 id="pg-recommendations-heading">Recommended photos</h3>
+              <p>Recommendations use image resolution, lighting, and sharpness as signals. They are heuristic suggestions—review each photo before adding it to an album.</p>
+            </div>
+            <button type="button" className="pg-retry-analysis" disabled={analysisLoading} onClick={() => void runRecommendations()}>
+              {analysisLoading ? "Checking photos…" : "Retry quality check"}
+            </button>
+          </div>
+          {analysisLoading && <p role="status">Checking photo quality…</p>}
+          {!analysisLoading && recommended.length === 0 && (
+            <p role="status" className="pg-no-recommendations">
+              No confident recommendations. Photos that are blurry, poorly exposed, too small, or could not be assessed are not recommended.
+            </p>
+          )}
+          {!analysisLoading && recommended.length > 0 && (
+            <>
+              <div className="pg-add-target">
+                <label htmlFor="pg-target-album">Add recommended photos to</label>
+                <select id="pg-target-album" value={selectedAlbumId} onChange={(event) => setSelectedAlbumId(event.target.value)}>
+                  <option value="">Choose an existing album</option>
+                  {(albums ?? []).map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}
+                </select>
+              </div>
+              {(albums ?? []).length === 0 && <p>No existing albums are available. Create an album before adding photos.</p>}
+              {addError && <p role="alert" className="pg-add-error">{addError}</p>}
+              {addStatus && (
+                <p role="status" className="pg-add-status">
+                  {addStatus.message} <a href={`#/albums/${encodeURIComponent(addStatus.albumId)}`}>View album</a>
+                </p>
+              )}
+              <ul className="pg-grid pg-recommended-grid">
+                {recommended.map(({ photo, quality }) => (
+                  <li key={photo.id}>
+                    <article className="pg-recommended-card">
+                      <img src={photo.thumbnail} alt={photo.title || "Recommended photo"} loading="lazy" />
+                      <div className="pg-recommended-info">
+                        <strong>{photo.title || "Untitled photo"}</strong>
+                        <span>Visual quality {quality.score}/100 · clear details · balanced exposure</span>
+                        <button
+                          type="button"
+                          disabled={!selectedAlbumId || addingPhotoId !== null || addedToByPhoto[photo.id]?.includes(selectedAlbumId)}
+                          onClick={() => void addPhoto(photo)}
+                        >
+                          {addingPhotoId === photo.id ? "Adding…" : addedToByPhoto[photo.id]?.includes(selectedAlbumId) ? "Added" : "Add to album"}
+                        </button>
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {!analysisLoading && notRecommendedCount > 0 && (
+            <p className="pg-filtered-count">{notRecommendedCount} photo{notRecommendedCount === 1 ? "" : "s"} did not meet the quality threshold.</p>
+          )}
+          {!analysisLoading && failedAnalysis.length > 0 && (
+            <section className="pg-analysis-errors" aria-label="Photos that could not be assessed">
+              <h4>Could not assess {failedAnalysis.length} photo{failedAnalysis.length === 1 ? "" : "s"}</h4>
+              <ul>
+                {failedAnalysis.map((photo) => (
+                  <li key={photo.id}>
+                    <span>{photo.title || "Untitled photo"}: {analysis[photo.id].error}</span>
+                    <button type="button" disabled={retryingPhotoId !== null} onClick={() => void retryAnalysis(photo)}>
+                      {retryingPhotoId === photo.id ? "Retrying…" : "Retry"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       ) : view === "grid" ? (
         <ul className="pg-grid">
@@ -182,6 +346,18 @@ export function PhotoGallery({
         </ul>
       ) : (
         <div className="pg-single" aria-live="polite">
+          <div className="pg-single-meta">
+            <strong className="pg-single-title">{selected.title || `Photo ${safeIndex + 1}`}</strong>
+            {albums !== undefined && (
+              <span className="pg-single-album">
+                {selectedAlbumNames.length === 0
+                  ? "No album"
+                  : selectedAlbumNames.length === 1
+                    ? `Album: ${selectedAlbumNames[0]}`
+                    : `Albums: ${selectedAlbumNames.join(", ")}`}
+              </span>
+            )}
+          </div>
           <div className="pg-stage">
             <div className="pg-rotate-tools" role="group" aria-label="Rotate photo">
               <button
@@ -189,7 +365,7 @@ export function PhotoGallery({
                 className="pg-rotate pg-rotate--ccw"
                 aria-label="Rotate counter-clockwise"
                 title="Rotate counter-clockwise (90°)"
-                disabled={savingRotation}
+                disabled={savingRotation || busy}
                 onClick={() => rotateSelected(-90)}
               >
                 <RotateCcw size={18} aria-hidden="true" />
@@ -199,7 +375,7 @@ export function PhotoGallery({
                 className="pg-rotate pg-rotate--cw"
                 aria-label="Rotate clockwise"
                 title="Rotate clockwise (90°)"
-                disabled={savingRotation}
+                disabled={savingRotation || busy}
                 onClick={() => rotateSelected(90)}
               >
                 <RotateCw size={18} aria-hidden="true" />
@@ -234,7 +410,7 @@ export function PhotoGallery({
                     <button
                       type="button"
                       className="pg-rotate-btn pg-rotate-btn--primary"
-                      disabled={savingRotation}
+                      disabled={savingRotation || busy}
                       onClick={() => void handleSaveRotation()}
                     >
                       <Check size={15} aria-hidden="true" />
@@ -252,6 +428,7 @@ export function PhotoGallery({
                   </button>
                 </div>
               )}
+              {hasPendingRotation && onSaveRotation && <p className="pg-keyboard-hint">Saving replaces the image and removes embedded metadata.</p>}
 
               {rotationError && (
                 <p role="alert" className="pg-rotate-error">
@@ -266,7 +443,6 @@ export function PhotoGallery({
               )}
 
               <figcaption>
-                <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
                 <span>
                   {safeIndex + 1} of {photos.length}
                 </span>

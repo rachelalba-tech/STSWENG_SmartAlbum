@@ -1,8 +1,9 @@
 import { useState } from "react"
 import type { Album, Photo } from "./api.ts"
+import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
 
-export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onRotate }: {
+export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onPhotosChanged, onRotate }: {
   album: Album
   photos?: Photo[]
   library?: Photo[] | null
@@ -10,6 +11,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   onUpdate?: (title: string, description: string) => Promise<void>
   onReorder?: (ids: string[]) => Promise<void>
   onAdd?: (ids: string[]) => Promise<void>
+  onPhotosChanged?: () => void | Promise<void>
   onRotate?: (photo: Photo, degrees: number) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
@@ -43,9 +45,12 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   return (
     <article className="album album--gallery">
       <a className="back" href="#/">All albums</a>
-      <a href={`#/albums/${encodeURIComponent(album.id)}/preview`} style={{ display: "block", marginBottom: 16 }}>Preview album</a>
+      <a href={`#/albums/${encodeURIComponent(album.id)}/preview`} style={{ display: "block", marginBottom: 16 }}>
+        Preview and export album
+      </a>
       <h2>{album.title}</h2>
       {album.description && <p>{album.description}</p>}
+      <DuplicatePhotos albumId={album.id} onPhotosChanged={onPhotosChanged} />
       {error && <p role="alert">{error}</p>}
       {onUpdate && !editing && <button onClick={() => {
         setTitle(album.title); setDescription(album.description ?? ""); setEditing(true)

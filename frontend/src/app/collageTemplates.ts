@@ -44,7 +44,7 @@ export const TEMPLATES: CollageTemplate[] = [
         id: "two-over-one", name: "Two over one", cols: 2, rows: 2,
         cells: [
             {col: 1, row: 1}, {col: 2, row: 1}, 
-            {col: 1, row: 2, colSpan: 3} 
+            {col: 1, row: 2, colSpan: 2}
         ],
     },
     // Collage 5 - 6 images with one large featured image on the bottom left 
@@ -53,7 +53,7 @@ export const TEMPLATES: CollageTemplate[] = [
         cells: [
             {col: 1, row: 1}, {col: 2, row: 1}, {col: 3, row: 1}, 
             {col: 1, row: 2, colSpan: 2, rowSpan: 2}, {col: 3, row: 2}, 
-            {col: 1, row: 3}, 
+            {col: 3, row: 3},
         ], 
     },
     // Collage 6 - 6 images with one large featured image on the bottom right
@@ -70,8 +70,8 @@ export const TEMPLATES: CollageTemplate[] = [
         id: "mosaic", name: "Mosaic", 
         cols: 3, rows: 3,
         cells: [
-            {col: 1, row: 1, colSpan: 2}, {col: 2, row: 1}, {col: 3, row: 1}, 
-            {col: 2, row: 2}, {col: 3, row: 2, colSpan: 2}, 
+            {col: 1, row: 1, colSpan: 2}, {col: 3, row: 1}, {col: 1, row: 2},
+            {col: 2, row: 2}, {col: 3, row: 2, rowSpan: 2},
             {col: 1, row: 3}, {col: 2, row: 3}, 
         ],
     },

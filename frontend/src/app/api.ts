@@ -41,6 +41,10 @@ export async function logout(): Promise<void> {
   if (!res.ok) throw new Error("Could not log out. Try again.")
 }
 
+export function resolvePhotoUrl(src: string): string {
+  return src.startsWith("/api/uploads/") ? `${API_URL}${src}` : src
+}
+
 export type Album = {
   id: string
   title: string
@@ -56,8 +60,11 @@ export type Photo = {
   description: string
   date: string
   albumId: string
+  albumIds?: string[]
   tags: string[]
 }
+
+export type DuplicateGroup = { keeper: Photo; duplicates: Photo[] }
 
 //console.log("API URL:", import.meta.env.VITE_API_URL);
 
@@ -73,22 +80,22 @@ function isAlbum(value: unknown): value is Album {
   )
 }
 
-// Required: id, src and albumId  
+// Required: id, src and albumId
 function parsePhoto(value: unknown): Photo | null {
   if (typeof value !== "object" || value === null) return null
   const p = value as Record<string, unknown>
   if (typeof p.id !== "string" || p.id === "") return null
   if (typeof p.src !== "string" || typeof p.albumId !== "string") return null
+  const src = resolvePhotoUrl(p.src)
   return {
     id: p.id,
-    src: p.src.startsWith("/api/uploads/") ? API_URL + p.src : p.src,
-    thumbnail: typeof p.thumbnail === "string"
-      ? (p.thumbnail.startsWith("/api/uploads/") ? API_URL + p.thumbnail : p.thumbnail)
-      : (p.src.startsWith("/api/uploads/") ? API_URL + p.src : p.src),
+    src,
+    thumbnail: typeof p.thumbnail === "string" ? resolvePhotoUrl(p.thumbnail) : src,
     title: typeof p.title === "string" ? p.title : "",
     description: typeof p.description === "string" ? p.description : "",
     date: typeof p.date === "string" ? p.date : "",
     albumId: p.albumId,
+    ...(Array.isArray(p.albumIds) ? { albumIds: p.albumIds.filter((id): id is string => typeof id === "string" && id !== "") } : {}),
     tags: Array.isArray(p.tags) ? p.tags.filter((t): t is string => typeof t === "string") : [],
   }
 }
@@ -123,10 +130,62 @@ export async function fetchPhotos(albumId?: string): Promise<Photo[]> {
   return photos as Photo[]
 }
 
-// POST /api/albums/:id/photos
+function parseDuplicateGroup(value: unknown): DuplicateGroup | null {
+  if (typeof value !== "object" || value === null) return null
+  const group = value as Record<string, unknown>
+  const keeper = parsePhoto(group.keeper)
+  if (!keeper || !Array.isArray(group.duplicates) || group.duplicates.length === 0) return null
+  const duplicates = group.duplicates.map(parsePhoto)
+  if (duplicates.some((photo) => photo === null)) return null
+  return { keeper, duplicates: duplicates as Photo[] }
+}
+
+async function duplicateError(res: Response): Promise<Error> {
+  let message = "Could not update duplicates"
+  try {
+    const body: unknown = await res.json()
+    if (typeof body === "object" && body !== null && typeof (body as { error?: unknown }).error === "string") {
+      message = (body as { error: string }).error
+    }
+  } catch {
+    // Some server errors have no JSON body.
+  }
+  return new Error(message)
+}
+
+export async function fetchDuplicateGroups(albumId?: string): Promise<DuplicateGroup[]> {
+  const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
+  const res = await apiFetch(`${API_URL}/api/photos/duplicates${query}`)
+  if (!res.ok) throw await duplicateError(res)
+  const body: unknown = await res.json()
+  if (!Array.isArray(body)) throw new Error("Unexpected duplicate response")
+  const groups = body.map(parseDuplicateGroup)
+  if (groups.some((group) => group === null)) throw new Error("Unexpected duplicate response")
+  return groups as DuplicateGroup[]
+}
+
+export async function removeDuplicatePhoto(photoId: string, albumId?: string): Promise<void> {
+  const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : ""
+  const res = await apiFetch(`${API_URL}/api/photos/duplicates/${encodeURIComponent(photoId)}${query}`, { method: "DELETE" })
+  if (!res.ok) throw await duplicateError(res)
+}
+
+export async function removeDuplicatePhotos(albumId: string | undefined, photoIds: string[]): Promise<void> {
+  const res = await apiFetch(`${API_URL}/api/photos/duplicates/delete`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...(albumId ? { albumId } : {}), photoIds }),
+  })
+  if (!res.ok) throw await duplicateError(res)
+}
+
+// POST /api/photos (library only) or POST /api/albums/:id/photos
 // Errors for image type, photo size, and failed upload 
 export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
-  const res = await apiFetch(`${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`, {
+  const endpoint = albumId
+    ? `${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`
+    : `${API_URL}/api/photos`
+  const res = await apiFetch(endpoint, {
     method: "POST",
     headers: { "content-type": file.type, "x-file-name": encodeURIComponent(file.name) },
     body: file,
@@ -193,7 +252,29 @@ async function writePhotos(id: string, path: string, photoIds: string[]): Promis
   return photos as Photo[]
 }
 
-const CANVAS_OUTPUT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+async function canSaveRotation(source: Blob): Promise<boolean> {
+  if (source.type === "image/jpeg") {
+    const signature = new Uint8Array(await source.slice(0, 2).arrayBuffer())
+    return signature[0] === 0xff && signature[1] === 0xd8
+  }
+  if (source.type === "image/webp") {
+    const header = new DataView(await source.slice(0, 21).arrayBuffer())
+    // VP8X stores the animation flag in the first payload byte.
+    return header.byteLength >= 21 && header.getUint32(0) === 0x52494646 && header.getUint32(8) === 0x57454250
+      && (header.getUint32(12) !== 0x56503858 || (header.getUint8(20) & 2) === 0)
+  }
+  if (source.type !== "image/png") return false
+  const png = new DataView(await source.arrayBuffer())
+  if (png.byteLength < 8 || png.getUint32(0) !== 0x89504e47 || png.getUint32(4) !== 0x0d0a1a0a) return false
+  // Animated PNG declares acTL before the first IDAT chunk.
+  for (let offset = 8; offset + 12 <= png.byteLength;) {
+    const type = png.getUint32(offset + 4)
+    if (type === 0x6163544c) return false
+    if (type === 0x49444154) return true
+    offset += png.getUint32(offset) + 12
+  }
+  return false
+}
 
 type DecodedImage = {
   source: CanvasImageSource
@@ -231,6 +312,7 @@ function decodeImageBlob(source: Blob): Promise<DecodedImage> {
 export async function rotateImageBlob(source: Blob, degrees: number): Promise<Blob> {
   const turns = (((Math.round(degrees / 90)) % 4) + 4) % 4
   if (turns === 0) return source
+  if (!await canSaveRotation(source)) throw new Error("Only static JPEG, PNG, and WebP photos can be saved after rotating.")
   const decoded = await decodeImageBlob(source)
   try {
     const sideways = turns % 2 === 1
@@ -242,7 +324,7 @@ export async function rotateImageBlob(source: Blob, degrees: number): Promise<Bl
     ctx.translate(canvas.width / 2, canvas.height / 2)
     ctx.rotate((turns * Math.PI) / 2)
     ctx.drawImage(decoded.source, -decoded.width / 2, -decoded.height / 2)
-    const preferredType = CANVAS_OUTPUT_TYPES.has(source.type) ? source.type : "image/png"
+    const preferredType = source.type
     const encode = (mime: string, quality?: number) =>
       new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, quality))
     let blob = await encode(preferredType, preferredType === "image/png" ? undefined : 0.92)
@@ -256,15 +338,20 @@ export async function rotateImageBlob(source: Blob, degrees: number): Promise<Bl
 
 export async function saveRotatedPhoto(photo: Photo, degrees: number): Promise<Photo> {
   const original = await apiFetch(photo.src)
+  if (original.status === 404) throw new Error("The photo changed. Reload before editing again.")
   if (!original.ok) throw new Error("Could not load the photo to rotate it")
   const rotated = await rotateImageBlob(await original.blob(), degrees)
   const contentType = rotated.type || "image/png"
   const res = await apiFetch(`${API_URL}/api/photos/${encodeURIComponent(photo.id)}/image`, {
     method: "PUT",
-    headers: { "content-type": contentType },
+    headers: {
+      "content-type": contentType,
+      "x-original-image": new URL(photo.src, window.location.href).pathname,
+    },
     body: rotated,
   })
   if (res.status === 413) throw new Error("The rotated photo is too large to save (10 MB limit)")
+  if (res.status === 409) throw new Error("The photo changed. Reload before editing again.")
   if (!res.ok) throw new Error(`Could not save the rotated photo (${res.status})`)
   const saved = parsePhoto(await res.json())
   if (!saved) throw new Error("Could not save the rotated photo: unexpected response")

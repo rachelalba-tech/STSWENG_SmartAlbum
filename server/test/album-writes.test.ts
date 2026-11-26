@@ -154,7 +154,9 @@ test("uploads persist and serve exact bytes, rejecting empty/foreign/unsupported
 test("replacing a photo image updates all shared memberships, persists bytes, and rolls back on save failure", async () => {
   await fixture(async ({ base, photosFile, uploads, photos, failPhotos }) => {
     const bytes = new Uint8Array([255, 216, 255, 224])
-    const put = (id: string, init: RequestInit) => fetch(`${base}/api/photos/${id}/image`, { method: "PUT", ...init })
+    const put = (id: string, init: RequestInit) => fetch(`${base}/api/photos/${id}/image`, {
+      method: "PUT", ...init, headers: { "x-original-image": `/api/uploads/${id}.png`, ...init.headers },
+    })
 
     // Share "one" into a second album so both memberships reference the same file.
     const secondAlbum = await (await fetch(`${base}/api/albums`, json("POST", { title: "Second" }))).json()
@@ -172,6 +174,8 @@ test("replacing a photo image updates all shared memberships, persists bytes, an
     const persisted = loadPhotos(photosFile)
     assert.equal(persisted.find((p) => p.id === "one")?.src, updated.src)
     assert.equal(persisted.find((p) => p.id === copyId)?.src, updated.src)
+    assert.equal((await put("one", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 409)
+    assert.equal(loadPhotos(photosFile).find((p) => p.id === "one")?.src, updated.src)
 
     // Validation & ownership checks
     assert.equal((await put("private", { headers: { "content-type": "image/jpeg" }, body: bytes })).status, 404)

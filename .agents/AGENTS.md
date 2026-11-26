@@ -50,29 +50,48 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   them out of other albums, and drag/button reordering with an explicit save (US #4/#6/#8).
   The album page shows the title, a link back, and that
   album's photos, with a control to take a photo out of that album. Upload sends several JPG, PNG,
-  GIF, or WebP files (10 MB each) to an album the API already has (US #9, Natt, PR #14). The gallery
-  toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15), and
-  provides 90° counter-clockwise/clockwise rotation buttons in the top right of the single-view stage
-  border with Save changes and Revert controls that persist rotated image bytes through the API (US #17).
+  GIF, or WebP files (10 MB each) either directly to the photo library (default, works with zero
+  albums) or into an existing album (US #9; PRs #14 and #37). The gallery
+  toggles a grid and a single photo, with arrow keys in single view (US #10, Alwayne, PR #15).
+  Single view also supports 90° rotation with save and revert (US #17; PR #34).
+  Saving re-encodes static images and does not preserve embedded metadata; animated images cannot be saved.
 - **Back end:** `server/src/`. Node.js HTTP (no framework or package dependencies) on port 3000,
   with TypeScript run directly by Node using `--experimental-strip-types`. At startup it validates
-  and loads `server/data/albums.json` and `server/data/photos.json`, and creates
+  and loads `server/data/albums.json`, `server/data/photos.json` and `server/data/collages.json`, and creates
   `server/data/uploads/` if needed. `GET /api/albums` lists the current user's albums;
   `GET /api/albums/:id` returns an owned album or 404. `GET /api/photos` lists that user's photos;
-  `GET /api/photos?albumId=` limits the list to one album. `POST /api/albums/:id/photos` stores an
-  owned upload (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
+  `GET /api/photos?albumId=` limits the list to one album. `POST /api/photos` stores an owned
+  library-only upload (`albumId: ""`) without requiring an album, and `POST /api/albums/:id/photos`
+  stores an owned upload into an album (raw body, image content-type, `x-file-name` header). `GET /api/uploads/:file`
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
   and leaves the file in the library (US #7, Joed). `PUT /api/photos/:id/image` replaces an owned
-  photo's stored image file across all shared memberships, persists the update with rollback on save
-  error, and cleans up the replaced file (US #17). Albums have `id`, `title`, `ownerId` and optional `description`.
+  photo's stored image file across all shared memberships: it rejects stale edits, rolls back on save
+  error, and cleans up the replaced file if unreferenced (US #17). Albums have `id`, `title`, `ownerId` and optional `description`.
   `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
-  Albums also have an optional `description`. `PATCH /api/albums/:id/photos` adds immutable-file
-  memberships; `PATCH /api/albums/:id/photos/order` validates and saves an exact permutation.
-  The library lists each physical file once; album lists sort by optional persisted `position`.
-  Album cards and collage controls load each album's full membership list, including shared-file copies.
-  Collages are persisted in `server/data/collages.json` through GET/POST/PUT/DELETE `/api/collages`.
-  Saves use temporary files and atomic renames. Album deletion rolls back completed store writes
-  on errors, but a process crash between JSON-file writes is not a database transaction.
+  `PATCH /api/albums/:id/photos` adds immutable-file memberships; `PATCH /api/albums/:id/photos/order`
+  validates and saves an exact permutation. The library lists each physical file once; album lists sort
+  by optional persisted `position`. Album cards and collage controls load each album's full membership
+  list, including shared-file copies. Collages are persisted in `server/data/collages.json` through
+  `GET/POST/PUT/DELETE /api/collages`, ownership-checked by the server; this branch corrects invalid
+  bounds/overlaps in `two-over-one`, `bottom-left-feature` and `mosaic`, preserving template IDs, slot
+  counts and saved photo order, with bounds/non-overlap regression tests. Saves use temporary files and
+  atomic renames. Album deletion rolls back completed store writes on errors, but a process crash
+  between JSON-file writes is not a database transaction.
+- **Exact duplicates (US #11):** gallery and album controls call `GET /api/photos/duplicates?albumId=`.
+  The server filters owner/album access before resolving upload paths and streaming SHA-256 hashes;
+  multiple album memberships sharing one file are one upload, not duplicates. The first upload in
+  each group is kept. Users can inspect full images, keep copies, remove one using
+  `DELETE /api/photos/duplicates/:photoId?albumId=`, or confirm a bounded JSON
+  `POST /api/photos/duplicates/delete` with explicit `{photoIds, albumId?}` using credentialed requests.
+  New uploads not in the reviewed IDs cannot be removed accidentally. Album actions detach only that
+  album; library actions remove every owned membership of the selected upload. Metadata saves roll
+  back on failure; cleanup runs only after saving and preserves files referenced by any owner. Failed
+  cleanup can leave inaccessible orphan files; it never rolls back a committed deletion or deletes shared data.
+- **Recommendations (US #14):** the gallery can analyze original image pixels in the browser, one image
+  at a time, using resolution, exposure/clipping and sharp-detail heuristics. Decode/read errors are
+  retryable; no semantic ranking or guarantee of photographic quality is claimed. Users select an
+  existing album and add a recommendation through `PATCH /api/albums/:id/photos` with `{photoIds}`
+  using credentialed requests. Uploaded image URLs resolve against `API_URL`.
 - **Identity and remaining features:** runtime loads hashed users from `server/data/users.json`.
   `POST /api/login` validates scrypt hashes and issues an 8-hour HTTP-only session cookie;
   `GET /api/session` restores the server identity and `POST /api/logout` revokes it (PR #27; US #26).
@@ -83,21 +102,30 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   allowed browsers are the deployed frontend and loopback HTTP. HTTPS cookies use SameSite=None
   and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
   The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
-  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping,
-  color grading, export and photo analysis are not implemented. Template collages and saved-collage editing are
-  implemented (PR #22; US #21). Collaboration and album cover selection remain page-local prototypes.
+  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping, color grading,
+  visual-similarity detection and dedicated low-quality flagging are not implemented.
+  Template collages and saved-collage editing are implemented (PR #22; US #21, with template geometry
+  defects corrected on this branch). Collaboration and album cover selection remain page-local prototypes.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`
   discovers `test/**/*.test.{ts,tsx}` and runs them in jsdom. They cover static album rendering,
-  hash parsing, upload selection and retry, and the gallery grid and single view. They do not call
+  hash parsing, upload selection and retry, the gallery grid/single view, and collage templates,
+  editing, saved-collage resolution, API behavior, duplicate review, quality recommendations and export.
+  They do not call
   the API. The frontend build type-checks `src/` and `vite.config.ts`, not `test/`.
   `server/test/albums.test.ts` has seven tests covering ownership filtering, seed-file
   loading/validation and HTTP reads. `server/test/photos.test.ts` covers removing a photo from an
-  album without deleting the file. `server/test/album-writes.test.ts` covers persistent album CRUD,
-  membership/order validation, ownership and failed-save rollback. Frontend editing tests cover
-  asynchronous save failures, details, adding photos and accessible reordering.
-  Authentication tests cover hashed credentials, session rotation/expiry/logout, origin/rate limits,
-  admin authorization, ownership isolation, forged localStorage, credentialed requests and gallery removal.
-  The server test script discovers `test/*.test.ts`; there is no separate server type-check/build.
+  album without deleting the file, plus `PATCH /api/albums/:id/photos` ownership, persistence,
+  idempotency and rollback. `server/test/duplicates.test.ts` covers actual-file hashes,
+  ownership/path safety, album/library removal, shared memberships/files, stale/foreign/null-scope
+  rejection, failed saves/cleanup, and new uploads arriving after a scan. `server/test/album-writes.test.ts`
+  covers persistent album CRUD, membership/order validation, ownership and failed-save rollback.
+  Frontend editing tests cover asynchronous save failures, details, adding photos and accessible
+  reordering. Recommendation tests cover synthetic image quality, low resolution, decode/add retries
+  and a 32-photo single-decoder limit. Duplicate tests cover scan/review/keep/delete UI and API URL
+  resolution. Authentication tests cover hashed credentials, session rotation/expiry/logout,
+  origin/rate limits, admin authorization, ownership isolation, forged localStorage, credentialed
+  requests and gallery removal. The server test script discovers `test/*.test.ts`; there is no
+  separate server type-check/build.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests and pushes to `main`, on Node 22. Frontend job:
   `npm ci`, `npm run lint`, `npm test`, `npm run build`.
   Server job: `npm test`. Browser job: Python 3.12, pinned Robot/Selenium dependencies,
@@ -108,17 +136,24 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
   and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
   Stale approvals are dismissed when the head or merge base changes; approval by someone other than
-  the last pusher is not required by the live ruleset. This branch includes PR #24's shared lint fixes.
-- **Formatter / end-to-end tests:** no formatter. `tests/` has 13 Robot/Selenium browser tests:
+  the last pusher is not required by the live ruleset.
+- **Formatter / end-to-end tests:** no formatter. `tests/` has 15 Robot/Selenium browser tests:
   creation/details, uploads/rejection/queue removal, saved order, library copies, collages,
-  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32).
+  grid/single removal, non-destructive album deletion, session refresh and logout (PR #32), and
+  library-only uploads and photo rotation that survive reload (PRs #37 and #34).
   `tests/run-browser.mjs` builds with a forced local API, creates disposable JSON/upload stores,
   checks persisted photo bytes, and closes servers/removes its stores after success or failure.
   Original image fixtures and their ZIP remain unchanged; WebP fixture casing is `sample.WEBP`.
 - **Album preview (US #22):** `#/albums/:id/preview`, linked from the album page, renders
-  `src/app/AlbumPreview.tsx`: the album title and its photos (full images, API order) as a
-  read-only page with no controls inside it. This preview does not render saved collage layouts; export
-  (US #23) should render this same component. `frontend/test/albumPreview.test.tsx` covers it.
+  `src/app/AlbumPreview.tsx`: all saved collage templates in their saved photo order, with no editing
+  or dragging inside each stage. Missing photos, failed image loads and unavailable layouts block
+  export and show errors/retry controls; photo/collage API loading and failure are distinct states.
+  Albums without saved collages retain a clearly labelled photo-list fallback with no export button.
+- **Collage export (US #23):** preview controls download PNG or JPEG, rendered at 2400×2400 by
+  `collageExport.ts`. After source images load, stage/slot geometry is captured together, retaining
+  center-cover crops, borders/gaps and computed slot backgrounds under transparent photos. Exports
+  reject incorrect browser MIME fallbacks, CORS taint, image errors and 15-second image-load timeouts.
+  Unit tests cover these cases, preview guards, format controls, links and sanitized download names.
 
 ## Commands
 
@@ -150,8 +185,9 @@ npm test           # node --experimental-strip-types --test test/*.test.ts
 ```
 
 Vite preview [inherits `server.proxy`](https://vite.dev/config/preview-options#preview-proxy), so
-both dev and preview forward `/api` to port 3000 and need the API running. The static build itself
-does not include a proxy.
+both dev and preview forward `/api` to port 3000 and need the local API running (`VITE_API_URL` can
+override the API request origin). Do not point mutating tests at a production API; use an isolated
+local API and temporary data. The static build itself does not include a proxy.
 
 **Gate before a PR:** in `frontend/`, `npm test`, `npm run lint`, and `npm run build` must pass. In
 `server/`, `npm test` must pass. From the root, browser suites must pass:

@@ -13,6 +13,8 @@ const samplePhoto: Photo = {
   tags: [],
 }
 
+const jpeg = new Uint8Array([0xff, 0xd8, 0xff])
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -44,9 +46,9 @@ function mockCanvas(width: number, height: number) {
   return { ctx, close, getCanvas: () => createdCanvas!, getEncodedMime: () => encodedMime }
 }
 
-test("rotateImageBlob swaps dimensions for 90 and 270 degrees and falls back to PNG for GIF", async () => {
+test("rotateImageBlob swaps dimensions for a quarter turn", async () => {
   const { ctx, close, getCanvas, getEncodedMime } = mockCanvas(400, 200)
-  const rotated = await rotateImageBlob(new Blob(["gif"], { type: "image/gif" }), 90)
+  const rotated = await rotateImageBlob(new Blob([jpeg], { type: "image/jpeg" }), 90)
 
   expect(getCanvas().width).toBe(200)
   expect(getCanvas().height).toBe(400)
@@ -54,14 +56,25 @@ test("rotateImageBlob swaps dimensions for 90 and 270 degrees and falls back to 
   expect(ctx.rotate).toHaveBeenCalledWith(Math.PI / 2)
   expect(ctx.drawImage).toHaveBeenCalled()
   expect(close).toHaveBeenCalledOnce()
-  expect(getEncodedMime()).toBe("image/png")
-  expect(rotated.type).toBe("image/png")
+  expect(getEncodedMime()).toBe("image/jpeg")
+  expect(rotated.type).toBe("image/jpeg")
+})
+
+test("rotation refuses GIF, animated WebP and animated PNG instead of flattening them", async () => {
+  const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0, 97, 99, 84, 76, 0, 0, 0, 0])
+  for (const blob of [
+    new Blob(["GIF89a"], { type: "image/gif" }),
+    new Blob(["RIFF\0\0\0\0WEBPVP8X\0\0\0\0\x02"], { type: "image/webp" }),
+    new Blob([png], { type: "image/png" }),
+  ]) {
+    await expect(rotateImageBlob(blob, 90)).rejects.toThrow("Only static")
+  }
 })
 
 test("saveRotatedPhoto uploads rotated bytes with credentials and returns updated photo", async () => {
   mockCanvas(300, 150)
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response(new Uint8Array([9, 8, 7]), { status: 200, headers: { "content-type": "image/jpeg" } }))
+    .mockResolvedValueOnce(new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } }))
     .mockResolvedValueOnce(new Response(JSON.stringify({
       ...samplePhoto,
       src: "/api/uploads/rotated.jpg",
@@ -77,12 +90,13 @@ test("saveRotatedPhoto uploads rotated bytes with credentials and returns update
   expect(fetchMock.mock.calls[1][1]?.method).toBe("PUT")
   expect(fetchMock.mock.calls[1][1]?.credentials).toBe("include")
   expect((fetchMock.mock.calls[1][1]?.headers as Record<string, string>)["content-type"]).toBe("image/jpeg")
+  expect((fetchMock.mock.calls[1][1]?.headers as Record<string, string>)["x-original-image"]).toBe(samplePhoto.src)
 })
 
 test("saveRotatedPhoto surfaces size-limit errors clearly", async () => {
   mockCanvas(300, 150)
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response(new Uint8Array([9, 8, 7]), { status: 200, headers: { "content-type": "image/png" } }))
+    .mockResolvedValueOnce(new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } }))
     .mockResolvedValueOnce(new Response("{}", { status: 413 }))
   vi.stubGlobal("fetch", fetchMock)
 

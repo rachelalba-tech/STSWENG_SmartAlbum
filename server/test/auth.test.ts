@@ -102,7 +102,7 @@ test("ownership comes from sessions, and only admins create or label albums", as
     const memberUpload = await fetch(base + "/api/albums/m/photos", { method: "POST", headers: { ...headers, "content-type": "image/png", "x-file-name": "mine.png" }, body: new Uint8Array([1, 2, 3]) })
     assert.equal(memberUpload.status, 201)
     const memberPhoto = await memberUpload.json()
-    assert.equal((await fetch(base + `/api/photos/${memberPhoto.id}/image`, { method: "PUT", headers: { ...headers, "content-type": "image/png" }, body: new Uint8Array([4, 5, 6]) })).status, 200)
+    assert.equal((await fetch(base + `/api/photos/${memberPhoto.id}/image`, { method: "PUT", headers: { ...headers, "content-type": "image/png", "x-original-image": memberPhoto.src }, body: new Uint8Array([4, 5, 6]) })).status, 200)
     assert.deepEqual(await (await fetch(base + "/api/collages", { headers })).json(), [])
     assert.equal((await (await fetch(base + "/api/photos", { headers })).json()).length, 1)
     for (const [route, method] of [["/api/albums", "POST"], ["/api/albums/m", "PATCH"]]) {
