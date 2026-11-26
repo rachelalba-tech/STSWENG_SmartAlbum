@@ -1,8 +1,9 @@
 import { useState } from "react"
 import type { Album, Photo } from "./api.ts"
+import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
 
-export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd }: {
+export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onPhotosChanged }: {
   album: Album
   photos?: Photo[]
   library?: Photo[] | null
@@ -10,6 +11,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   onUpdate?: (title: string, description: string) => Promise<void>
   onReorder?: (ids: string[]) => Promise<void>
   onAdd?: (ids: string[]) => Promise<void>
+  onPhotosChanged?: () => void | Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(album.title)
@@ -45,11 +47,12 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   return (
     <article className="album">
       <div className="album-nav">
-        <a className="back" href="#/"><h3>All albums</h3></a>
-        <a href={`#/albums/${encodeURIComponent(album.id)}/preview`}><h3>Preview album</h3></a>
+        <a className="back" href="#/">All albums</a>
+        <a href={`#/albums/${encodeURIComponent(album.id)}/preview`}>Preview and export album</a>
       </div>
       <h2>{album.title}</h2>
       {album.description && <p>{album.description}</p>}
+      <DuplicatePhotos albumId={album.id} onPhotosChanged={onPhotosChanged} />
       {error && <p role="alert">{error}</p>}
       {hasTools && <div className="album-toolbar" role="toolbar" aria-label="Album options">
         {onUpdate && !editing && <button type="button" onClick={() => {

@@ -231,8 +231,8 @@ function ActionsMenu({ children }: { children: ReactNode }) {
         className="am-btn am-btn--ghost am-btn--icon"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Album actions"
-        title="Album actions"
+        aria-label="More options"
+        title="More options"
         onClick={(e) => { e.stopPropagation(); toggle() }}
       >
         <MoreHorizontal size={16} />
@@ -614,6 +614,9 @@ export function AlbumManager({
   }
 
   const photoCount = (albumId: string) => photos.filter((p) => p.albumId === albumId).length
+  const albumPhotoCounts = albums.map((album) => photoCount(album.id))
+  const largest = albumPhotoCounts.length ? Math.max(...albumPhotoCounts) : 0
+  const average = albumPhotoCounts.length ? Math.round(photos.length / albumPhotoCounts.length) : 0
 
   const coverFor = (album: ManagedAlbum) =>
     album.coverPhoto ?? photos.find((p) => p.albumId === album.id) ?? null
@@ -772,16 +775,16 @@ export function AlbumManager({
         </div>
       )}
 
-      {/* <div className="am-stats">
+      <div className="am-stats">
         <h2>Collection Overview</h2>
         <br></br>
         <div className="am-stats-grid">
           <div className="am-stat"><strong>{albums.length}</strong><span>Albums</span></div>
-          <div className="am-stat"><strong>{photos.length}</strong><span>Total photos</span></div>
-          <div className="am-stat"><strong>{largest}</strong><span>Largest album</span></div>
-          <div className="am-stat"><strong>{average}</strong><span>Avg per album</span></div>
+          <div className="am-stat"><strong>{photos.length}</strong><span>Album photo memberships</span></div>
+          <div className="am-stat"><strong>{largest}</strong><span>Photos in largest album</span></div>
+          <div className="am-stat"><strong>{average}</strong><span>Average photos per album</span></div>
         </div>
-      </div> */}
+      </div>
     </div>
   )
 }

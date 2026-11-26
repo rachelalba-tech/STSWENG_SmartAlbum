@@ -72,6 +72,9 @@ export function SavedCollagesPanel({ album, photos, collages, onSave, onDelete, 
             })}
           </ul>
         )}
+        <a className="sc-preview-link" href={`#/albums/${encodeURIComponent(album.id)}/preview`}>
+          Preview and export album collages
+        </a>
         <div className="am-dialog-actions">
           {onClose && <button className="am-btn am-btn--outline" onClick={onClose}>Close</button>}
         </div>
@@ -113,11 +116,14 @@ export function SavedCollagesPanel({ album, photos, collages, onSave, onDelete, 
       )}
 
       {template && (
-        <div className="ac-stage" aria-label={`Collage ${current.name}`}>
+        <div className="ac-stage ac-stage--readonly" aria-label={`Collage ${current.name}`}>
           <CollageLayout template={template} photos={slots} />
         </div>
       )}
 
+      <a className="sc-preview-link" href={`#/albums/${encodeURIComponent(album.id)}/preview`}>
+        Preview and export album collages
+      </a>
       <div className="am-dialog-actions">
         <button className="am-btn am-btn--outline" onClick={() => { setConfirmingDelete(false); setMode({ kind: "list" }) }}>
           Back
