@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-27 · feat/rotate-photo · feat(photos): persist 90° single-view rotation with stale-edit and animation guards (PR #34; US #17).
 - 2026-11-24 · main (uncommitted) · feat(upload): allow uploading photos directly to the Photos library (`POST /api/photos`) without selecting an existing album (US #9).
 - 2026-11-23 · feat/joed-collage-export · chore(pr): sync saved collage preview/export with merged album CRUD, session auth and browser CI (US #22/#23).
 - 2026-11-23 · feat/joed-duplicate-photos · chore(pr): sync exact duplicate cleanup with merged album CRUD, session auth and browser CI (US #11).

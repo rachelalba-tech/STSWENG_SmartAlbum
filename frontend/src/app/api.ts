@@ -251,3 +251,109 @@ async function writePhotos(id: string, path: string, photoIds: string[]): Promis
   if (photos.some((p) => !p)) throw new Error("Unexpected photo response")
   return photos as Photo[]
 }
+
+async function canSaveRotation(source: Blob): Promise<boolean> {
+  if (source.type === "image/jpeg") {
+    const signature = new Uint8Array(await source.slice(0, 2).arrayBuffer())
+    return signature[0] === 0xff && signature[1] === 0xd8
+  }
+  if (source.type === "image/webp") {
+    const header = new DataView(await source.slice(0, 21).arrayBuffer())
+    // VP8X stores the animation flag in the first payload byte.
+    return header.byteLength >= 21 && header.getUint32(0) === 0x52494646 && header.getUint32(8) === 0x57454250
+      && (header.getUint32(12) !== 0x56503858 || (header.getUint8(20) & 2) === 0)
+  }
+  if (source.type !== "image/png") return false
+  const png = new DataView(await source.arrayBuffer())
+  if (png.byteLength < 8 || png.getUint32(0) !== 0x89504e47 || png.getUint32(4) !== 0x0d0a1a0a) return false
+  // Animated PNG declares acTL before the first IDAT chunk.
+  for (let offset = 8; offset + 12 <= png.byteLength;) {
+    const type = png.getUint32(offset + 4)
+    if (type === 0x6163544c) return false
+    if (type === 0x49444154) return true
+    offset += png.getUint32(offset) + 12
+  }
+  return false
+}
+
+type DecodedImage = {
+  source: CanvasImageSource
+  width: number
+  height: number
+  close: () => void
+}
+
+function decodeImageBlob(source: Blob): Promise<DecodedImage> {
+  if (typeof createImageBitmap === "function") {
+    return createImageBitmap(source).then((bitmap) => ({
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      close: () => bitmap.close(),
+    }))
+  }
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(source)
+    const img = new Image()
+    img.onload = () => resolve({
+      source: img,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      close: () => URL.revokeObjectURL(url),
+    })
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("Could not decode the photo to rotate it"))
+    }
+    img.src = url
+  })
+}
+
+export async function rotateImageBlob(source: Blob, degrees: number): Promise<Blob> {
+  const turns = (((Math.round(degrees / 90)) % 4) + 4) % 4
+  if (turns === 0) return source
+  if (!await canSaveRotation(source)) throw new Error("Only static JPEG, PNG, and WebP photos can be saved after rotating.")
+  const decoded = await decodeImageBlob(source)
+  try {
+    const sideways = turns % 2 === 1
+    const canvas = document.createElement("canvas")
+    canvas.width = sideways ? decoded.height : decoded.width
+    canvas.height = sideways ? decoded.width : decoded.height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Could not rotate the photo")
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+    ctx.rotate((turns * Math.PI) / 2)
+    ctx.drawImage(decoded.source, -decoded.width / 2, -decoded.height / 2)
+    const preferredType = source.type
+    const encode = (mime: string, quality?: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, quality))
+    let blob = await encode(preferredType, preferredType === "image/png" ? undefined : 0.92)
+    if (!blob && preferredType !== "image/png") blob = await encode("image/png")
+    if (!blob) throw new Error("Could not rotate the photo")
+    return blob
+  } finally {
+    decoded.close()
+  }
+}
+
+export async function saveRotatedPhoto(photo: Photo, degrees: number): Promise<Photo> {
+  const original = await apiFetch(photo.src)
+  if (original.status === 404) throw new Error("The photo changed. Reload before editing again.")
+  if (!original.ok) throw new Error("Could not load the photo to rotate it")
+  const rotated = await rotateImageBlob(await original.blob(), degrees)
+  const contentType = rotated.type || "image/png"
+  const res = await apiFetch(`${API_URL}/api/photos/${encodeURIComponent(photo.id)}/image`, {
+    method: "PUT",
+    headers: {
+      "content-type": contentType,
+      "x-original-image": new URL(photo.src, window.location.href).pathname,
+    },
+    body: rotated,
+  })
+  if (res.status === 413) throw new Error("The rotated photo is too large to save (10 MB limit)")
+  if (res.status === 409) throw new Error("The photo changed. Reload before editing again.")
+  if (!res.ok) throw new Error(`Could not save the rotated photo (${res.status})`)
+  const saved = parsePhoto(await res.json())
+  if (!saved) throw new Error("Could not save the rotated photo: unexpected response")
+  return saved
+}

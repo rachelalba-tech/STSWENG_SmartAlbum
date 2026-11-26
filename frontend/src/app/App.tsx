@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import "../styles/App.css"
 import "../styles/AppShell.css"
-import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, updateAlbum } from "./api.ts"
+import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, saveRotatedPhoto, updateAlbum } from "./api.ts"
 import type { Album, Photo, User } from "./api.ts"
 import { LoginPage } from "./LoginPage.tsx"
 import { AlbumPage } from "./AlbumPage.tsx"
@@ -32,6 +32,14 @@ const toManaged = (a: Album): ManagedAlbum => ({
   collaborationEnabled: false,
   collaborators: [],
 })
+
+function replaceRotatedPhoto(photos: Photo[], previousSrc: string, saved: Photo): Photo[] {
+  return photos.map((p) =>
+    p.id === saved.id || p.src === previousSrc
+      ? { ...p, src: saved.src, thumbnail: saved.thumbnail }
+      : p,
+  )
+}
 
 function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
   const [albums, setAlbums] = useState<ManagedAlbum[] | null>(null)
@@ -200,6 +208,11 @@ function AlbumRoute({ id, preview = false, canLabel }: { id: string; preview?: b
             onUpdate={canLabel ? async (title, description) => setAlbum(await updateAlbum(id, title, description)) : undefined}
             onReorder={async (ids) => setPhotos(await reorderAlbumPhotos(id, ids))}
             onAdd={async (ids) => setPhotos(await addPhotosToAlbum(id, ids))}
+            onRotate={async (photo, degrees) => {
+              const saved = await saveRotatedPhoto(photo, degrees)
+              setPhotos((prev) => replaceRotatedPhoto(prev, photo.src, saved))
+              setLibrary((prev) => (prev ? replaceRotatedPhoto(prev, photo.src, saved) : prev))
+            }}
           />
           {photoError && <p>{photoError}</p>}
         </>
@@ -306,7 +319,13 @@ function PhotosRoute() {
     setLoadAttempt((attempt) => attempt + 1)
   }}>Retry</button></p>
   if (!photos || !albums) return <p>Loading photos and albums…</p>
-  return <><DuplicatePhotos onPhotosChanged={reloadPhotos} /><PhotoGallery photos={photos} albums={albums} /></>
+  return <>
+    <DuplicatePhotos onPhotosChanged={reloadPhotos} />
+    <PhotoGallery photos={photos} albums={albums} onSaveRotation={async (photo, degrees) => {
+      const saved = await saveRotatedPhoto(photo, degrees)
+      setPhotos((prev) => (prev ? replaceRotatedPhoto(prev, photo.src, saved) : prev))
+    }} />
+  </>
 }
 
 export default function App() {

@@ -3,7 +3,7 @@ import type { Album, Photo } from "./api.ts"
 import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
 
-export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onPhotosChanged }: {
+export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onReorder, onAdd, onPhotosChanged, onRotate }: {
   album: Album
   photos?: Photo[]
   library?: Photo[] | null
@@ -12,6 +12,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   onReorder?: (ids: string[]) => Promise<void>
   onAdd?: (ids: string[]) => Promise<void>
   onPhotosChanged?: () => void | Promise<void>
+  onRotate?: (photo: Photo, degrees: number) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(album.title)
@@ -42,7 +43,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
   }
 
   return (
-    <article className="album">
+    <article className="album album--gallery">
       <a className="back" href="#/">All albums</a>
       <a href={`#/albums/${encodeURIComponent(album.id)}/preview`} style={{ display: "block", marginBottom: 16 }}>
         Preview and export album
@@ -82,7 +83,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
       </>}
       {!order ? <PhotoGallery photos={photos} title="Album photos" subtitle={`${photos.length} photos in this album`}
         emptyTitle="No photos in this album" emptyDescription="Upload photos to this album and they will appear here."
-        busy={busy} onRemove={onRemove ? (id) => void save(async () => { await onRemove(id) }, () => {}) : undefined} />
+        busy={busy} onSaveRotation={onRotate} onRemove={onRemove ? (id) => void save(async () => { await onRemove(id) }, () => {}) : undefined} />
       : <ul className="photos" style={{ listStyle: "none", padding: 0, display: "flex", flexWrap: "wrap", gap: 8 }}>
         {displayed.map((photo, index) => <li key={photo.id} draggable={!!order && !busy}
           onDragStart={() => setDragged(photo.id)} onDragEnd={() => setDragged(null)}
