@@ -101,7 +101,7 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   Only admins create and label albums; the UI hides these controls for regular users.
   Sessions are process-local (restart signs everyone out), capped at 1000; login has bounded
   hashing concurrency and a 20-attempt/IP/minute limit. Cross-origin mutations are checked;
-  allowed browsers are the deployed frontend and loopback HTTP. HTTPS cookies use SameSite=None
+  allowed browsers are the production and staging frontends and loopback HTTP. HTTPS cookies use SameSite=None
   and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
   The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
   Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping, color grading,
@@ -133,9 +133,13 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   Server job: `npm test`. Browser job: Python 3.12, pinned Robot/Selenium dependencies,
   headless Chrome against a built frontend and disposable loopback API; reports, screenshots and
   API request logs are uploaded even on failure (PR #32). All three jobs run for every PR; there
-  are no path filters or cancellation of outdated runs. Formatting,
-  PR-title validation, automatic labeling, dependency updates and
-  release automation are not configured in the repo. A GitHub ruleset on `main` blocks direct
+  are no path filters or cancellation of outdated runs. On pushes to `main` only, successful checks
+  trigger the two Render staging hooks for the tested commit (PR #39). Hook success confirms acceptance,
+  not a live deployment. Before approving the protected `production` job, verify both staging services
+  are healthy at that commit and the commit is still current on `main`. Production hooks use the same
+  commit. Keep Render auto-deploy disabled for services managed by these hooks, and keep backend data
+  on persistent storage. Formatting, PR-title validation, automatic labeling, dependency updates and
+  release tagging are not configured in the repo. A GitHub ruleset on `main` blocks direct
   and force pushes for everyone and requires a PR with one approval from a reviewer with write access.
   Stale approvals are dismissed when the head or merge base changes; approval by someone other than
   the last pusher is not required by the live ruleset.
