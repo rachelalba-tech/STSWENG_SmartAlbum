@@ -32,6 +32,17 @@
     object-fit: cover; 
 }
 .ac-stage .ac-slot { cursor: grab; }
+.ac-stage--readonly .ac-slot { cursor: default; }
+.ac-image-fallback {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 8px;
+    color: #fff;
+    text-align: center;
+    font-size: 13px;
+}
 .ac-stage .ac-slot:focus-visible,
 .ac-slot.is-picked { 
     outline: 3px solid var(--primary, #1d4ed8); 
@@ -138,4 +149,9 @@
     overflow: hidden; 
     text-overflow: ellipsis; 
     white-space: nowrap; 
+}
+.sc-preview-link {
+    align-self: flex-start;
+    color: var(--primary, #1d4ed8);
+    font-weight: 600;
 }
