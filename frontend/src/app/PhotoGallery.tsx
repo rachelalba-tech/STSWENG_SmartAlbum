@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Check, ChevronLeft, ChevronRight, Grid3X3, Maximize2, RotateCcw, RotateCw, Undo2 } from "lucide-react"
-import "../styles/PhotoGallery.css"
+import "../styles/styles.css"
 import { addPhotosToAlbum, type Album, type Photo } from "./api.ts"
 import { analyzePhoto, type PhotoQuality } from "./photoQuality.ts"
 

@@ -48,8 +48,8 @@ Library Copies Preserve Source Order And Work In Collages
     Count Equals    css:.pg-tile    4
     Go To Albums Page
     Wait Until Element Contains    css:[aria-label="Open ${target}"] .am-badge    4 photos
-    Mouse Over    css:[aria-label="Open ${target}"]
-    Click Button    css:[aria-label="Open ${target}"] [aria-label="Create collage"]
+    Open Album Actions    ${target}
+    Click Album Action    Create collage
     Wait Until Element Is Visible    css:.ac-name input
     Input Text    css:.ac-name input    Copied photo collage
     Click Button    xpath://dialog//button[normalize-space()='Save collage']
@@ -57,9 +57,8 @@ Library Copies Preserve Source Order And Work In Collages
     Click Button    xpath://dialog//button[normalize-space()='Close']
     Reload Page
     Wait Until Element Is Visible    css:[aria-label="Open ${target}"]
-    Mouse Over    css:[aria-label="Open ${target}"]
-    Wait Until Element Is Visible    css:[aria-label="Open ${target}"] [aria-label="Saved collages (1)"]
-    Click Button    css:[aria-label="Open ${target}"] [aria-label="Saved collages (1)"]
+    Open Album Actions    ${target}
+    Click Album Action    Saved collages (1)
     Wait Until Element Is Visible    css:[aria-label="Open collage Copied photo collage"]
     Click Button    css:[aria-label="Open collage Copied photo collage"]
     Wait Until Element Is Visible    css:.sc .ac-stage img
@@ -77,10 +76,11 @@ Library Copies Preserve Source Order And Work In Collages
     Open Album    ${source}
     Count Equals    css:.pg-tile    4
     Go To Albums Page
-    Mouse Over    css:[aria-label="Open ${target}"]
-    Click Button    css:[aria-label="Open ${target}"] [aria-label="Delete album"]
+    Open Album Actions    ${target}
+    Click Album Action    Delete album
     Handle Alert    ACCEPT
     Wait Until Page Does Not Contain Element    css:[aria-label="Open ${target}"]
+    Element Text Should Be    xpath://div[span[normalize-space()='Album photo memberships']]/strong    4
     Reload Page
     Wait Until Page Contains    Photo albums
     Page Should Not Contain Element    css:[aria-label="Open ${target}"]
@@ -103,6 +103,16 @@ Session Survives Refresh And Logout Requires Sign In Again
     Capture Page Screenshot    signed-in-again.png
 
 *** Keywords ***
+Open Album Actions
+    [Arguments]    ${album_name}
+    Mouse Over    css:[aria-label="Open ${album_name}"]
+    Click Button    css:[aria-label="Open ${album_name}"] [aria-label="More options"]
+    Wait Until Element Is Visible    css:.am-menu:not([hidden])
+
+Click Album Action
+    [Arguments]    ${label}
+    Click Button    xpath://ul[@role="menu" and not(@hidden)]//button[@role="menuitem" and normalize-space(.)="${label}"]
+
 Collage Images Are Decoded
     ${loaded}=    Execute Javascript    return [...document.querySelectorAll('.sc .ac-stage img')].every(i => i.complete && i.naturalWidth > 0);
     Should Be True    ${loaded}    Saved collages must load the copied photo files.

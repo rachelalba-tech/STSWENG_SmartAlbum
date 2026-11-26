@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react"
-import "../styles/App.css"
-import "../styles/AppShell.css"
 import { addPhotosToAlbum, createAlbum, deleteAlbum, fetchAlbum, fetchAlbums, fetchPhotos, fetchSession, logout, removePhotoFromAlbum, reorderAlbumPhotos, saveRotatedPhoto, updateAlbum } from "./api.ts"
 import type { Album, Photo, User } from "./api.ts"
 import { LoginPage } from "./LoginPage.tsx"
@@ -98,7 +96,7 @@ function AlbumListRoute({ canLabel }: { canLabel: boolean }) {
         onAlbumDelete={async (id) => {
           await deleteAlbum(id)
           setAlbums((prev) => (prev ?? []).filter((a) => a.id !== id))
-          setPhotos((prev) => prev.map((p) => p.albumId === id ? { ...p, albumId: "" } : p))
+          setPhotos((prev) => prev.filter((p) => p.albumId !== id))
           reload()
         }}
         onAlbumSelect={(id) => {
@@ -353,11 +351,14 @@ export default function App() {
   if (!currentUser) return <LoginPage onLogin={(user) => { setAccountError(null); setCurrentUser(user) }} />
 
   return (
-    <section id="center">
-      <header className="app-header">
-        <h1>Smart Photo Album</h1>
+    <div className="app-shell">
+      <header className="topbar">
+        <h1 className="brand"><img className="brand-logo" src="icon.svg" alt="" width="25" height="25" />
+        Smart Photo Album</h1>
+        <AppTabs active={page} />
         <div className="app-account">
-          <span>{currentUser.username}</span>
+          <span className="avatar" aria-hidden="true">{currentUser.username.slice(0, 1).toUpperCase()}</span>
+          <span className="app-username">{currentUser.username}</span>
           <button disabled={loggingOut} onClick={async () => {
             setLoggingOut(true); setAccountError(null)
             try { await logout(); setCurrentUser(null) } catch (err) {
@@ -366,8 +367,8 @@ export default function App() {
           }}>Log out</button>
         </div>
       </header>
+      <main>
       {accountError && <p role="alert">{accountError}</p>}
-      <AppTabs active={page} />
       {previewId ? (
         // Keyed so switching between album and preview of the same id refetches and remounts.
         <AlbumRoute key={"preview:" + previewId} id={previewId} preview canLabel={currentUser.role === "admin"} />
@@ -380,6 +381,7 @@ export default function App() {
       ) : (
         <AlbumListRoute canLabel={currentUser.role === "admin"} />
       )}
-    </section>
+      </main>
+    </div>
   )
 }

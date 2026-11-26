@@ -44,6 +44,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
 - **Front end:** `frontend/`. Vite 8 + React 19 + TypeScript 6, ESLint, Vitest. Entry point is
   `src/main.tsx`; app code is in `src/app/` and styles in `src/styles/`. Hash routes: album list
   (`#/`), album page (`#/albums/:id`), upload (`#/upload`), and all-photos gallery (`#/photos`).
+  The refreshed shell and masonry gallery share `src/styles/styles.css`; album-card actions
+  are grouped under a keyboard-accessible More options menu (PR #35).
   The list is the album manager. Creating, renaming and deleting albums persist through the API
   (PR #23; US #1/#2/#8). Album deletion keeps image files in the library and removes saved collages.
   The album page supports editing its headline/description, adding library photos without moving
