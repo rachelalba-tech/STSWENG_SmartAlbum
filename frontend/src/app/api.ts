@@ -60,6 +60,7 @@ export type Photo = {
   description: string
   date: string
   albumId: string
+  albumIds?: string[]
   tags: string[]
 }
 
@@ -94,6 +95,7 @@ function parsePhoto(value: unknown): Photo | null {
     description: typeof p.description === "string" ? p.description : "",
     date: typeof p.date === "string" ? p.date : "",
     albumId: p.albumId,
+    ...(Array.isArray(p.albumIds) ? { albumIds: p.albumIds.filter((id): id is string => typeof id === "string" && id !== "") } : {}),
     tags: Array.isArray(p.tags) ? p.tags.filter((t): t is string => typeof t === "string") : [],
   }
 }
@@ -177,10 +179,13 @@ export async function removeDuplicatePhotos(albumId: string | undefined, photoId
   if (!res.ok) throw await duplicateError(res)
 }
 
-// POST /api/albums/:id/photos
+// POST /api/photos (library only) or POST /api/albums/:id/photos
 // Errors for image type, photo size, and failed upload 
 export async function uploadPhoto(albumId: string, file: File): Promise<Photo> {
-  const res = await apiFetch(`${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`, {
+  const endpoint = albumId
+    ? `${API_URL}/api/albums/${encodeURIComponent(albumId)}/photos`
+    : `${API_URL}/api/photos`
+  const res = await apiFetch(endpoint, {
     method: "POST",
     headers: { "content-type": file.type, "x-file-name": encodeURIComponent(file.name) },
     body: file,

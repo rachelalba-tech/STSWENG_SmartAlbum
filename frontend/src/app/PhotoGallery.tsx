@@ -24,7 +24,7 @@ export function PhotoGallery({
   title = "All photos",
   subtitle = `${photos.length} uploaded photo${photos.length === 1 ? "" : "s"}`,
   emptyTitle = "No photos yet",
-  emptyDescription = "Upload photos to an album and they will appear here.",
+  emptyDescription = "Upload photos and they will appear here.",
   onRemove,
   busy = false,
 }: PhotoGalleryProps) {
@@ -35,7 +35,7 @@ export function PhotoGallery({
   const [retryingPhotoId, setRetryingPhotoId] = useState<string | null>(null)
   const [selectedAlbumId, setSelectedAlbumId] = useState("")
   const [addingPhotoId, setAddingPhotoId] = useState<string | null>(null)
-  const [addedToByPhoto, setAddedToByPhoto] = useState<Record<string, string>>({})
+  const [addedToByPhoto, setAddedToByPhoto] = useState<Record<string, string[]>>({})
   const [addError, setAddError] = useState<string | null>(null)
   const [addStatus, setAddStatus] = useState<{ message: string; albumId: string } | null>(null)
   const safeIndex = Math.min(selectedIndex, Math.max(photos.length - 1, 0))
@@ -100,7 +100,7 @@ export function PhotoGallery({
     setAddStatus(null)
     try {
       await addPhotosToAlbum(album.id, [photo.id])
-      setAddedToByPhoto((current) => ({ ...current, [photo.id]: album.id }))
+      setAddedToByPhoto((current) => ({ ...current, [photo.id]: [...(current[photo.id] ?? []), album.id] }))
       setAddStatus({ message: `Added ${photo.title || "photo"} to ${album.title}.`, albumId: album.id })
     } catch (error) {
       setAddError(error instanceof Error ? error.message : "Could not add photo to album. Try again.")
@@ -110,6 +110,15 @@ export function PhotoGallery({
   }
 
   const selected = photos[safeIndex]
+  const selectedAlbumNames = selected && albums !== undefined
+    ? (() => {
+        const ids = new Set(selected.albumIds ?? (selected.albumId ? [selected.albumId] : []))
+        for (const id of addedToByPhoto[selected.id] ?? []) ids.add(id)
+        return [...ids]
+          .map((id) => albums.find((album) => album.id === id)?.title)
+          .filter((name): name is string => Boolean(name))
+      })()
+    : []
   const recommended = photos
     .flatMap((photo) => {
       const quality = analysis[photo.id]?.quality
@@ -215,10 +224,10 @@ export function PhotoGallery({
                         <span>Visual quality {quality.score}/100 · clear details · balanced exposure</span>
                         <button
                           type="button"
-                          disabled={!selectedAlbumId || addingPhotoId !== null || addedToByPhoto[photo.id] === selectedAlbumId}
+                          disabled={!selectedAlbumId || addingPhotoId !== null || addedToByPhoto[photo.id]?.includes(selectedAlbumId)}
                           onClick={() => void addPhoto(photo)}
                         >
-                          {addingPhotoId === photo.id ? "Adding…" : addedToByPhoto[photo.id] === selectedAlbumId ? "Added" : "Add to album"}
+                          {addingPhotoId === photo.id ? "Adding…" : addedToByPhoto[photo.id]?.includes(selectedAlbumId) ? "Added" : "Add to album"}
                         </button>
                       </div>
                     </article>
@@ -269,6 +278,18 @@ export function PhotoGallery({
         </ul>
       ) : (
         <div className="pg-single" aria-live="polite">
+          <div className="pg-single-meta">
+            <strong className="pg-single-title">{selected.title || `Photo ${safeIndex + 1}`}</strong>
+            {albums !== undefined && (
+              <span className="pg-single-album">
+                {selectedAlbumNames.length === 0
+                  ? "No album"
+                  : selectedAlbumNames.length === 1
+                    ? `Album: ${selectedAlbumNames[0]}`
+                    : `Albums: ${selectedAlbumNames.join(", ")}`}
+              </span>
+            )}
+          </div>
           <div className="pg-stage">
             <button
               type="button"
@@ -286,7 +307,6 @@ export function PhotoGallery({
                 alt={selected.title || `Photo ${safeIndex + 1}`}
               />
               <figcaption>
-                <strong>{selected.title || `Photo ${safeIndex + 1}`}</strong>
                 <span>
                   {safeIndex + 1} of {photos.length}
                 </span>

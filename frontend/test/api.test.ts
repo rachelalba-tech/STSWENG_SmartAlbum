@@ -40,6 +40,13 @@ test("photo API responses resolve only managed upload URLs against the API origi
     "https://api.example.test/api/uploads/upload-thumb.jpg",
   ])
 
+  fetchMock.mockResolvedValueOnce(response({ ...photo("library", "/api/uploads/lib.jpg", "/api/uploads/lib.jpg"), albumId: "" }))
+  const libraryUploaded = await uploadPhoto("", new File(["image"], "lib.jpg", { type: "image/jpeg" }))
+  expect([libraryUploaded.src, libraryUploaded.albumId]).toEqual([
+    "https://api.example.test/api/uploads/lib.jpg",
+    "",
+  ])
+
   fetchMock.mockResolvedValueOnce(response([{ keeper: managed, duplicates: [external, relative] }]))
   const [group] = await fetchDuplicateGroups("album")
   expect([group.keeper.src, group.keeper.thumbnail]).toEqual([
@@ -54,6 +61,7 @@ test("photo API responses resolve only managed upload URLs against the API origi
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     "https://api.example.test/api/photos?albumId=album",
     "https://api.example.test/api/albums/album/photos",
+    "https://api.example.test/api/photos",
     "https://api.example.test/api/photos/duplicates?albumId=album",
   ])
 })

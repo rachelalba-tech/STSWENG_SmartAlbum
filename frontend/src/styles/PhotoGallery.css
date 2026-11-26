@@ -122,6 +122,31 @@
   margin-top: 24px;
 }
 
+.pg-single-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.pg-single-title {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-h);
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-single-album {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .pg-stage {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) 48px;
@@ -153,23 +178,11 @@
 
 .pg-figure figcaption {
   display: flex;
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: center;
   width: min(100%, 720px);
-  margin-top: 16px;
-  color: #070707;
+  margin-top: 12px;
+  color: #4a484e;
   font-size: 13px;
-}
-
-.pg-figure figcaption strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pg-figure figcaption span {
-  flex: 0 0 auto;
-  color: #b8b2c0;
 }
 
 .pg-arrow {

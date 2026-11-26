@@ -6,6 +6,7 @@ export type Photo = {
   description: string
   date: string
   albumId: string
+  albumIds?: string[]
   tags: string[]
   position?: number
 }
@@ -25,6 +26,15 @@ export const IMAGE_TYPES: Record<string, string> = {
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024
 
 export function listPhotosForUser(photos: StoredPhoto[], ownerId: string, albumId?: string): Photo[] {
+  const albumsByFile = new Map<string, string[]>()
+  if (albumId === undefined) {
+    for (const p of photos) {
+      if (p.ownerId !== ownerId || !p.albumId) continue
+      const list = albumsByFile.get(p.file) ?? []
+      if (!list.includes(p.albumId)) list.push(p.albumId)
+      albumsByFile.set(p.file, list)
+    }
+  }
   const files = new Set<string>()
   return photos
     .filter((p) => {
@@ -34,7 +44,7 @@ export function listPhotosForUser(photos: StoredPhoto[], ownerId: string, albumI
       return true
     })
     .sort((a, b) => albumId === undefined ? 0 : (a.position ?? 0) - (b.position ?? 0))
-    .map(toPublic)
+    .map((p) => albumId === undefined ? { ...toPublic(p), albumIds: albumsByFile.get(p.file) ?? [] } : toPublic(p))
 }
 
 // Drop the album link only. An empty albumId means the photo stays in the library.

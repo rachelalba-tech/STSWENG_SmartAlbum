@@ -252,25 +252,19 @@ function UploadRoute() {
 
   if (error) return <p>{error}</p>
   if (!albums) return <p>Loading albums…</p>
-  if (albums.length === 0) {
-    return (
-      <div className="page">
-        <h2>Upload Photos</h2>
-        <p>
-          Photos are stored in albums. <a href="#/">Create an album</a> first.
-        </p>
-      </div>
-    )
-  }
   return (
     <div className="page">
       <PhotoUpload
         albums={albums.map((a) => ({ id: a.id, name: a.title }))}
         onUploaded={(added) => setLastAlbumId(added[0].albumId)}
       />
-      {lastAlbumId && (
+      {lastAlbumId !== null && (
         <p>
-          <a href={`#/albums/${encodeURIComponent(lastAlbumId)}`}>View the album</a>
+          {lastAlbumId ? (
+            <a href={`#/albums/${encodeURIComponent(lastAlbumId)}`}>View the album</a>
+          ) : (
+            <a href="#/photos">View in Photos</a>
+          )}
         </p>
       )}
     </div>
