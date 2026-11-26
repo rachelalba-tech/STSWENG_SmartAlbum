@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { Images, LogIn } from "lucide-react"
-import "../styles/LoginPage.css"
+import "../styles/styles.css"
 import { login } from "./api.ts"
 import type { User } from "./api.ts"
 
@@ -47,7 +47,6 @@ export function LoginPage({ onLogin, authenticate = login }: LoginPageProps) {
 
         <div className="login-panel">
           <div className="login-panel-content">
-            <p className="login-eyebrow">Account access</p>
             <h2 id="login-title">Welcome back</h2>
             <p className="login-intro">Enter your details to continue to your photo library.</p>
 

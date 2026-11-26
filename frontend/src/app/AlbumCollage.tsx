@@ -4,7 +4,7 @@ import { templatesFor, supportedCounts } from "./collageTemplates"
 import type { CollageTemplate } from "./collageTemplates"
 import type { CollageDraft, SavedCollage } from "./collageStore"
 import type { Photo } from "./AlbumManager"
-import "../styles/AlbumCollage.css"
+import "../styles/styles.css"
 
 const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? "s" : ""}`
 

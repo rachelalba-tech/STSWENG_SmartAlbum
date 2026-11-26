@@ -75,8 +75,12 @@ const dialog = () => {
   if (!el) throw new Error("No dialog is open")
   return within(el)
 }
+const menuItemFromCard = (name: string, label: string) => {
+  fireEvent.click(within(card(name)).getByRole("button", { name: "More options" }))
+  return screen.getByRole("menuitem", { name: label })
+}
 const openFromCard = (name: string, buttonLabel: string) => {
-  fireEvent.click(within(card(name)).getByRole("button", { name: buttonLabel }))
+  fireEvent.click(menuItemFromCard(name, buttonLabel))
   return dialog()
 }
 const stats = () =>
@@ -136,12 +140,22 @@ test("collection overview shows totals, largest album and rounded average", () =
     [album({ id: "a", name: "A" }), album({ id: "b", name: "B" })],
     [photo("1", "a"), photo("2", "b"), photo("3", "b")],
   )
-  expect(stats()).toEqual({ Albums: "2", "Total photos": "3", "Largest album": "2", "Avg per album": "2" })
+  expect(stats()).toEqual({
+    Albums: "2",
+    "Album photo memberships": "3",
+    "Photos in largest album": "2",
+    "Average photos per album": "2",
+  })
 })
 
 test("collection overview does not divide by zero with no albums", () => {
   setup([])
-  expect(stats()).toEqual({ Albums: "0", "Total photos": "0", "Largest album": "0", "Avg per album": "0" })
+  expect(stats()).toEqual({
+    Albums: "0",
+    "Album photo memberships": "0",
+    "Photos in largest album": "0",
+    "Average photos per album": "0",
+  })
 })
 
 // Covers
@@ -204,17 +218,47 @@ test("Enter and Space on a focused card select it, other keys do not", () => {
 
 test("keys pressed on a button inside the card do not select it", () => {
   const { onAlbumSelect } = setup([album({ id: "a", name: "A" })])
-  fireEvent.keyDown(within(card("A")).getByRole("button", { name: "Rename album" }), { key: "Enter" })
+  fireEvent.keyDown(within(card("A")).getByRole("button", { name: "More options" }), { key: "Enter" })
   expect(onAlbumSelect).not.toHaveBeenCalled()
 })
 
 test("action buttons do not trigger card selection", () => {
   const { onAlbumSelect } = setup([album({ id: "a", name: "A" })])
   for (const label of ["Manage collaborators", "Choose album cover", "Rename album", "Delete album"]) {
-    fireEvent.click(within(card("A")).getByRole("button", { name: label }))
+    fireEvent.click(menuItemFromCard("A", label))
     openDialogEl()?.close()
   }
   expect(onAlbumSelect).not.toHaveBeenCalled()
+})
+
+test("the action menu supports arrow keys and restores focus after Escape", () => {
+  setup([album({ id: "a", name: "A" })])
+  const trigger = within(card("A")).getByRole("button", { name: "More options" })
+  fireEvent.click(trigger)
+  const menu = document.querySelector('[role="menu"]') as HTMLUListElement
+  const items = within(menu).getAllByRole("menuitem")
+  expect(document.activeElement).toBe(items[0])
+  fireEvent.keyDown(items[0], { key: "ArrowDown" })
+  expect(document.activeElement).toBe(items[1])
+  fireEvent.keyDown(items[1], { key: "ArrowUp" })
+  expect(document.activeElement).toBe(items[0])
+  fireEvent.keyDown(items[0], { key: "Escape" })
+  expect(menu.hidden).toBe(true)
+  expect(document.activeElement).toBe(trigger)
+})
+
+test("the album action menu opens above a low trigger and closes on Tab", () => {
+  setup([album({ id: "a", name: "A" })])
+  const trigger = within(card("A")).getByRole("button", { name: "More options" })
+  vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(300, window.innerHeight - 42, 36, 36),
+  )
+  fireEvent.click(trigger)
+  const menu = screen.getByRole("menu", { name: "More options" })
+  expect(menu.style.bottom).toBe("46px")
+  fireEvent.keyDown(within(menu).getAllByRole("menuitem")[0], { key: "Tab" })
+  expect(menu.hidden).toBe(true)
+  expect(document.activeElement).toBe(trigger)
 })
 
 // Create

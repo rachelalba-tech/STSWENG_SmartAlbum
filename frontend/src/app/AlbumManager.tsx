@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react"
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react"
+import { Children, createContext, useContext, useEffect, useId, useRef, useState } from "react"
+import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from "react"
 import { createPortal } from "react-dom"
 import {
-  Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon, LayoutGrid, Images,
+  Plus, Folder, FolderOpen, Edit, Trash2, Users, X, UserPlus, Crown, Eye, ImageIcon, LayoutGrid, Images, MoreHorizontal,
 } from "lucide-react"
-import "../styles/AlbumManager.css"
+import "../styles/styles.css"
 import { AlbumCollage } from "./AlbumCollage"
 import type { SaveHandler } from "./AlbumCollage"
 import { SavedCollagesPanel } from "./SavedCollages"
@@ -114,13 +114,17 @@ function Modal({
           <button className="am-btn am-btn--ghost am-btn--icon am-dialog-close" onClick={onClose} aria-label="Close">
             <X size={16} />
           </button>
-          {children}
+          {/* Reset so nothing inside a dialog renders as a menu row */}
+          <MenuContext.Provider value={null}>{children}</MenuContext.Provider>
         </div>
       )}
     </dialog>,
     document.body,
   )
 }
+
+// When an IconButton is rendered inside ActionsMenu it becomes a labelled menu row.
+const MenuContext = createContext<{ close: () => void } | null>(null)
 
 function IconButton({
   label, onClick, danger, children,
@@ -130,6 +134,27 @@ function IconButton({
   danger?: boolean
   children: ReactNode
 }) {
+  const menu = useContext(MenuContext)
+
+  if (menu) {
+    return (
+      <button
+        type="button"
+        role="menuitem"
+        tabIndex={-1}
+        className={`am-menu-item${danger ? " is-danger" : ""}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          menu.close()
+          onClick(e)
+        }}
+      >
+        {children}
+        {label}
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"
@@ -143,6 +168,111 @@ function IconButton({
     >
       {children}
     </button>
+  )
+}
+
+// Collapses the card's action buttons into one "more" button with a dropdown.
+// The list stays mounted (only hidden) so each dialog keeps its open state, and it is
+// portaled to <body> because .am-card clips overflow and transforms on hover.
+function ActionsMenu({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<CSSProperties>({})
+  const menuId = useId()
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+
+  // Return focus to the trigger so a dialog opened from the menu restores focus somewhere visible
+  const close = () => { setOpen(false); triggerRef.current?.focus() }
+  const dismiss = () => setOpen(false)
+
+  const items = () =>
+    Array.from(listRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
+
+  const toggle = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect()
+      const below = window.innerHeight - r.bottom - 12
+      const above = r.top - 12
+      const right = Math.min(window.innerWidth - 208, Math.max(8, window.innerWidth - r.right))
+      setPos(below < 260 && above > below
+        ? { bottom: window.innerHeight - r.top + 4, right, maxHeight: above }
+        : { top: r.bottom + 4, right, maxHeight: below })
+    }
+    setOpen((o) => !o)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    items()[0]?.focus()
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node
+      if (!listRef.current?.contains(t) && !triggerRef.current?.contains(t)) dismiss()
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") close() }
+    const onScroll = (e: Event) => { if (e.target !== listRef.current) dismiss() }
+    document.addEventListener("pointerdown", onDown)
+    document.addEventListener("keydown", onKey)
+    window.addEventListener("scroll", onScroll, true)
+    window.addEventListener("resize", dismiss)
+    return () => {
+      document.removeEventListener("pointerdown", onDown)
+      document.removeEventListener("keydown", onKey)
+      window.removeEventListener("scroll", onScroll, true)
+      window.removeEventListener("resize", dismiss)
+    }
+  }, [open])
+
+  const onListKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
+    if (e.key === "Tab") {
+      close()
+      return
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return
+    e.preventDefault()
+    const list = items()
+    const i = list.indexOf(document.activeElement as HTMLElement)
+    list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length]?.focus()
+  }
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="am-btn am-btn--ghost am-btn--icon"
+        id={`${menuId}-trigger`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label="More options"
+        title="More options"
+        onClick={(e) => { e.stopPropagation(); toggle() }}
+      >
+        <MoreHorizontal size={16} />
+      </button>
+
+      {createPortal(
+        <ul
+          ref={listRef}
+          id={menuId}
+          role="menu"
+          aria-labelledby={`${menuId}-trigger`}
+          className="am-menu"
+          hidden={!open}
+          style={pos}
+          // React events bubble through portals, so keep clicks from reaching the album card
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={onListKeyDown}
+        >
+          <MenuContext.Provider value={{ close }}>
+            {Children.toArray(children).map((child, i) => (
+              <li key={i} role="none">{child}</li>
+            ))}
+          </MenuContext.Provider>
+        </ul>,
+        document.body,
+      )}
+    </>
   )
 }
 
@@ -499,6 +629,8 @@ export function AlbumManager({
   }
 
   const photoCount = (albumId: string) => photos.filter((p) => p.albumId === albumId).length
+  const largest = albums.reduce((max, album) => Math.max(max, photoCount(album.id)), 0)
+  const average = albums.length ? Math.round(photos.length / albums.length) : 0
 
   const coverFor = (album: ManagedAlbum) =>
     album.coverPhoto ?? photos.find((p) => p.albumId === album.id) ?? null
@@ -510,14 +642,11 @@ export function AlbumManager({
     }
   }
 
-  const largest = albums.reduce((max, a) => Math.max(max, photoCount(a.id)), 0)
-  const average = albums.length ? Math.round(photos.length / albums.length) : 0
-
   return (
     <div className="am">
       <div className="am-header">
         <div>
-          <h2>Photo albums</h2>
+          <h2 className="am-title">Photo albums</h2>
           <p className="am-muted">Organize your photos into collections</p>
         </div>
         {canLabel && <button className="am-btn am-btn--primary" onClick={() => setIsCreateOpen(true)}>
@@ -620,22 +749,24 @@ export function AlbumManager({
                   <div className="am-card-title">
                     <span>{album.name}</span>
                     <div className="am-actions">
-                      <CollageDialog album={album} photos={photos} onSave={onCollageSave} />
-                      {collages && (
-                        <SavedCollagesDialog
-                          album={album}
-                          photos={photos}
-                          collages={collages}
-                          onSave={onCollageSave}
-                          onDelete={onCollageDelete}
-                        />
-                      )}
-                      <CollaboratorsDialog album={album} onUpdate={onAlbumUpdate} />
-                      <AlbumCoverDialog album={album} photos={photos} onUpdate={onAlbumUpdate} />
-                      {canLabel && <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />}
-                      <IconButton label="Delete album" danger onClick={() => void handleDelete(album)}>
-                        <Trash2 size={14} />
-                      </IconButton>
+                      <ActionsMenu>
+                        <CollageDialog album={album} photos={photos} onSave={onCollageSave} />
+                        {collages && (
+                          <SavedCollagesDialog
+                            album={album}
+                            photos={photos}
+                            collages={collages}
+                            onSave={onCollageSave}
+                            onDelete={onCollageDelete}
+                          />
+                        )}
+                        <CollaboratorsDialog album={album} onUpdate={onAlbumUpdate} />
+                        <AlbumCoverDialog album={album} photos={photos} onUpdate={onAlbumUpdate} />
+                        {canLabel && <RenameAlbumDialog album={album} onUpdate={onAlbumUpdate} />}
+                        <IconButton label="Delete album" danger onClick={() => void handleDelete(album)}>
+                          <Trash2 size={14} />
+                        </IconButton>
+                      </ActionsMenu>
                     </div>
                   </div>
 
@@ -663,9 +794,9 @@ export function AlbumManager({
         <br></br>
         <div className="am-stats-grid">
           <div className="am-stat"><strong>{albums.length}</strong><span>Albums</span></div>
-          <div className="am-stat"><strong>{photos.length}</strong><span>Total photos</span></div>
-          <div className="am-stat"><strong>{largest}</strong><span>Largest album</span></div>
-          <div className="am-stat"><strong>{average}</strong><span>Avg per album</span></div>
+          <div className="am-stat"><strong>{photos.length}</strong><span>Album photo memberships</span></div>
+          <div className="am-stat"><strong>{largest}</strong><span>Photos in largest album</span></div>
+          <div className="am-stat"><strong>{average}</strong><span>Average photos per album</span></div>
         </div>
       </div>
     </div>

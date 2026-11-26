@@ -5,7 +5,7 @@ import { downloadCollage, renderCollageBlob } from "./collageExport"
 import type { ExportFormat } from "./collageExport"
 import { resolveCollage } from "./collageStore"
 import type { CollagesStatus, SavedCollage } from "./collageStore"
-import "../styles/AlbumCollage.css"
+import "../styles/styles.css"
 
 type PhotoStatus = "loading" | "ready" | "error"
 

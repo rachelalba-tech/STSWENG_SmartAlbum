@@ -1,9 +1,9 @@
 .dp {
   margin: 20px 0;
   padding: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--social-bg);
+  background: var(--tint-soft);
   text-align: left;
 }
 
@@ -21,11 +21,11 @@
 .dp-error button {
   min-height: 36px;
   padding: 7px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 7px;
-  background: var(--bg);
-  color: var(--text-h);
-  font: 600 13px/1.2 var(--sans);
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 13px/1.2 var(--font);
   cursor: pointer;
 }
 
@@ -44,7 +44,7 @@
 .dp-status,
 .dp-empty,
 .dp-scope {
-  color: var(--text);
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -77,9 +77,9 @@
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 9px;
-  background: var(--bg);
+  background: var(--surface);
 }
 
 .dp-photo {
@@ -108,7 +108,7 @@
   display: block;
   margin: 6px 0;
   overflow: hidden;
-  color: var(--text-h);
+  color: var(--ink);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -126,6 +126,6 @@
 
 .dp-kept {
   align-self: center;
-  color: var(--text);
+  color: var(--muted);
   font-size: 12px;
 }
