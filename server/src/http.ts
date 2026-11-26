@@ -46,6 +46,10 @@ type Options = {
 
 const encoder = new TextEncoder()
 const MAX_DUPLICATE_ACTION_BODY_BYTES = 64 * 1024
+const DEPLOYED_FRONTEND_ORIGINS = new Set([
+  "https://stsweng-smartalbum-1.onrender.com",
+  "https://smartalbum-frontend-staging.onrender.com",
+])
 
 function send(res: ServerResponse, status: number, body: unknown) {
   const bytes = encoder.encode(JSON.stringify(body))
@@ -374,13 +378,7 @@ export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, us
   let loginWork = 0
   return createServer((req, res) => {
     const origin = req.headers.origin
-
-  const origins = [
-    "https://stsweng-smartalbum-1.onrender.com", // prod
-    "https://smartalbum-frontend-staging.onrender.com" // staging
-  ]
-
-    const allowedOrigin = origin === undefined || origins.includes(origin) ||
+    const allowedOrigin = origin === undefined || DEPLOYED_FRONTEND_ORIGINS.has(origin) ||
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
     res.setHeader("Vary", "Origin")
     res.setHeader("Cache-Control", "no-store")

@@ -3,6 +3,7 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-27 · feature/workflow · chore(ci): deploy the tested main commit to Render staging, gate production on environment approval, and allow the staging frontend origin (PR #39).
 - 2026-11-23 · feat/joed-collage-export · chore(pr): sync saved collage preview/export with merged album CRUD, session auth and browser CI (US #22/#23).
 - 2026-11-23 · feat/joed-duplicate-photos · chore(pr): sync exact duplicate cleanup with merged album CRUD, session auth and browser CI (US #11).
 - 2026-11-23 · feat/joed-best-photos · chore(pr): sync photo recommendations with merged album CRUD, session auth and browser CI (US #14).

@@ -82,10 +82,16 @@ Existing plaintext user files must be migrated before starting this version; inv
 
 Local dev/preview use the loopback API proxy. For separate HTTPS hosts, build with `VITE_API_URL`
 pointing to the API and allow third-party cookies; HTTPS is required for cross-site sessions.
-The API allows the existing deployed frontend origin and loopback HTTP origins. Prefer a same-origin
+The API allows the production and staging frontend origins and loopback HTTP origins. Prefer a same-origin
 reverse proxy if the browser blocks third-party cookies. Forward `X-Forwarded-Proto: https` only
 from a trusted proxy. Sessions and rate limits are process-local; use one API instance until a
 shared session store is added. Album stores remain JSON files, not crash-atomic multi-file transactions.
+
+On `main` pushes, CI triggers the Render staging deploy hooks after all tests pass. Before
+approving the `production` job, check that both staging services are healthy at the tested
+commit and that it is still the latest commit on `main`. A successful hook only submits the
+deployment. Disable Render auto-deploy for these services so it cannot bypass CI or production
+approval, and keep backend data on persistent storage.
 
 ## 5. Run checks
 

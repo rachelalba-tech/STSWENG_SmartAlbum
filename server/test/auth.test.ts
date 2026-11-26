@@ -114,10 +114,19 @@ test("origin checks protect mutations and credentialed preflights remain usable"
     const { cookie } = await signIn(base)
     for (const route of ["/api/login", "/api/logout", "/api/albums"]) assert.equal((await fetch(base + route, { ...json({ title: "Attack" }), headers: { cookie, origin: "https://evil.example", "content-type": "application/json" } })).status, 403)
     assert.equal((await fetch(base + "/api/session", { headers: { cookie } })).status, 200)
-    const preflight = await fetch(base + "/api/albums", { method: "OPTIONS", headers: { origin: "http://localhost:5173" } })
-    assert.equal(preflight.status, 204)
-    assert.equal(preflight.headers.get("access-control-allow-credentials"), "true")
-    assert.equal(preflight.headers.get("access-control-allow-origin"), "http://localhost:5173")
+    for (const origin of [
+      "https://stsweng-smartalbum-1.onrender.com",
+      "https://smartalbum-frontend-staging.onrender.com",
+      "http://localhost:5173",
+    ]) {
+      const preflight = await fetch(base + "/api/albums", { method: "OPTIONS", headers: { origin } })
+      assert.equal(preflight.status, 204)
+      assert.equal(preflight.headers.get("access-control-allow-credentials"), "true")
+      assert.equal(preflight.headers.get("access-control-allow-origin"), origin)
+    }
+    const unrelated = await fetch(base + "/api/albums", { method: "OPTIONS", headers: { origin: "https://evil.example" } })
+    assert.equal(unrelated.status, 403)
+    assert.equal(unrelated.headers.get("access-control-allow-origin"), null)
   })
 })
 
