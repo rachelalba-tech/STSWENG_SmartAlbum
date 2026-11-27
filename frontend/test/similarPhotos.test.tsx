@@ -190,6 +190,7 @@ test("scans sequentially, lets the user review sets one by one, keep a photo, an
 
   expect(await screen.findByText("Set 1 of 2")).toBeTruthy()
   expect(stub.maxConcurrentLoads()).toBe(1)
+  expect(screen.queryByText(/Quality \d+\/100/)).toBeNull()
 
   // Step to the second set individually.
   fireEvent.click(screen.getByRole("button", { name: "Next set" }))

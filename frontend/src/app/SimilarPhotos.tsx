@@ -205,7 +205,7 @@ export function SimilarPhotos({
                         </span>
                       </header>
                       <div className="sp-group-grid">
-                        {group.photos.map(({ photo, quality }, index) => {
+                        {group.photos.map(({ photo }, index) => {
                           const kept = keptIds.has(photo.id)
                           const isDeleting = busyPhotoId === photo.id
                           return (
@@ -219,10 +219,7 @@ export function SimilarPhotos({
                                 <img src={photo.thumbnail} alt={photo.title || "Similar photo"} />
                               </a>
                               <span className="sp-photo-title">{photo.title || "Untitled photo"}</span>
-                              <span className="sp-photo-meta">
-                                {index === 0 ? "Suggested best shot · " : ""}
-                                Quality {quality.score}/100
-                              </span>
+                              {index === 0 && <span className="sp-photo-meta">Suggested best shot</span>}
                               <div className="sp-photo-actions">
                                 {kept ? (
                                   <button

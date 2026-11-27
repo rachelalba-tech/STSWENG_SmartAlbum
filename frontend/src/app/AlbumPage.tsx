@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { Album, Photo } from "./api.ts"
 import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
+import { LowQualityPhotos } from "./LowQualityPhotos.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
 import { SimilarPhotos } from "./SimilarPhotos.tsx"
 
@@ -57,6 +58,7 @@ export function AlbumPage({ album, photos = [], library, onRemove, onUpdate, onR
       <div className="photo-tools">
         <DuplicatePhotos albumId={album.id} onPhotosChanged={onPhotosChanged} />
         <SimilarPhotos albumId={album.id} photos={photos} onPhotosChanged={onPhotosChanged} />
+        <LowQualityPhotos albumId={album.id} photos={photos} onPhotosChanged={onPhotosChanged} />
       </div>
       {error && <p role="alert">{error}</p>}
       {hasTools && <div className="album-toolbar" role="group" aria-label="Album options">

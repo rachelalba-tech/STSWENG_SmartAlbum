@@ -8,6 +8,7 @@ import { AppTabs } from "./AppTabs.tsx"
 import { PhotoUpload } from "./PhotoUpload.tsx"
 import { PhotoGallery } from "./PhotoGallery.tsx"
 import { DuplicatePhotos } from "./DuplicatePhotos.tsx"
+import { LowQualityPhotos } from "./LowQualityPhotos.tsx"
 import { SimilarPhotos } from "./SimilarPhotos.tsx"
 import { albumIdFromHash, pageFromHash, previewAlbumIdFromHash } from "./route.ts"
 import { AlbumManager } from "./AlbumManager.tsx"
@@ -323,6 +324,7 @@ function PhotosRoute() {
       <div className="photo-tools">
         <DuplicatePhotos onPhotosChanged={reloadPhotos} />
         <SimilarPhotos photos={photos} onPhotosChanged={reloadPhotos} />
+        <LowQualityPhotos photos={photos} onPhotosChanged={reloadPhotos} />
       </div>
       <PhotoGallery photos={photos} albums={albums} onSaveRotation={async (photo, degrees) => {
         const saved = await saveRotatedPhoto(photo, degrees)
