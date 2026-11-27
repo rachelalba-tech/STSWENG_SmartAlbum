@@ -209,6 +209,14 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string): Pr
   if (!res.ok) throw new Error("Could not remove photo")
 }
 
+// DELETE /api/photos/:photoId
+// Removes the photo from the library and every album where it appears.
+export async function deletePhoto(photoId: string): Promise<void> {
+  const res = await apiFetch(`${API_URL}/api/photos/${encodeURIComponent(photoId)}`, { method: "DELETE" })
+  if (res.status === 404) throw new Error("That photo was already removed")
+  if (!res.ok) throw new Error("Could not delete photo")
+}
+
 export async function createAlbum(title: string, description = ""): Promise<Album> {
   return writeAlbum("", "POST", title, description)
 }

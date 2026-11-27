@@ -232,7 +232,7 @@ AC3: If the duplicates are deleted from the album then they can no longer be fou
 
 As a user, I want the system to identify visually similar photos so that I can choose the best image from multiple shots of the same subject or moment
 
-- **Status:** Not implemented.
+- **Status:** Implemented (uncommitted; awaiting review/merge) — browser-side perceptual dHash, spatial RGB and color-histogram grouping in gallery and albums, with set-by-set review, quality-ordered suggestions, retryable decode errors, album detach (`DELETE /api/albums/:albumId/photos/:photoId`) and library-wide deletion (`DELETE /api/photos/:photoId`).
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** Alwayne and Natt

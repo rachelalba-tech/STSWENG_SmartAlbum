@@ -207,7 +207,6 @@ test("PATCH rolls back in-memory photo memberships when persistence fails", asyn
     rmSync(app.dir, { recursive: true, force: true })
   }
 })
-
 test("POST /api/photos uploads to the library without an album, persists, and can be added to an album later", async () => {
   const app = await startServer([], [albums[0]])
   try {
@@ -297,6 +296,61 @@ test("POST /api/photos works when no albums exist, validates uploads, and rolls 
     })
     assert.equal(res.status, 500)
     assert.equal(failing.storage.photos.length, 0)
+  } finally {
+    console.error = originalError
+    await failing.close()
+    rmSync(failing.dir, { recursive: true, force: true })
+  }
+})
+test("DELETE /api/photos/:id removes every owned membership across gallery and albums, preserves foreign files, and rolls back on save failure", async () => {
+  const targetAlbum: Album = { id: "target", title: "Target album", ownerId: "demo-user" }
+  const inOpening = photo("shot-a", "opening")
+  const inTarget = { ...photo("shot-a-copy", "target"), file: inOpening.file, src: inOpening.src, thumbnail: inOpening.thumbnail }
+  const keep = photo("shot-b", "opening")
+  const foreignShared = { ...photo("foreign-shared", "secret", "other-user"), file: inOpening.file }
+  const foreignOnly = photo("foreign-only", "secret", "other-user")
+  const app = await startServer([inOpening, inTarget, keep, foreignShared, foreignOnly], [...albums, targetAlbum])
+
+  try {
+    const forbidden = await fetch(`${app.base}/api/photos/foreign-only`, { method: "DELETE" })
+    assert.equal(forbidden.status, 404)
+
+    const removed = await fetch(`${app.base}/api/photos/shot-a`, { method: "DELETE" })
+    assert.equal(removed.status, 204)
+
+    const library = await (await fetch(`${app.base}/api/photos`)).json() as { id: string }[]
+    assert.deepEqual(library.map((p) => p.id), ["shot-b"])
+    const opening = await (await fetch(`${app.base}/api/photos?albumId=opening`)).json() as { id: string }[]
+    assert.deepEqual(opening.map((p) => p.id), ["shot-b"])
+    const target = await (await fetch(`${app.base}/api/photos?albumId=target`)).json() as { id: string }[]
+    assert.deepEqual(target, [])
+
+    // Shared physical file stays on disk because another owner still references it.
+    assert.equal(existsSync(path.join(app.dir, "uploads", inOpening.file)), true)
+    assert.equal(app.storage.photos.some((p) => p.id === "foreign-shared"), true)
+
+    // Deleting a photo whose file has no other references cleans up its bytes on disk.
+    const removedKeep = await fetch(`${app.base}/api/photos/shot-b`, { method: "DELETE" })
+    assert.equal(removedKeep.status, 204)
+    assert.equal(existsSync(path.join(app.dir, "uploads", keep.file)), false)
+
+    const again = await fetch(`${app.base}/api/photos/shot-b`, { method: "DELETE" })
+    assert.equal(again.status, 404)
+  } finally {
+    await app.close()
+    rmSync(app.dir, { recursive: true, force: true })
+  }
+
+  const failing = await startServer([photo("stay", "opening")], [albums[0]], () => {
+    throw new Error("disk full")
+  })
+  const originalError = console.error
+  console.error = () => {}
+  try {
+    const res = await fetch(`${failing.base}/api/photos/stay`, { method: "DELETE" })
+    assert.equal(res.status, 500)
+    assert.equal(failing.storage.photos.length, 1)
+    assert.equal(existsSync(path.join(failing.dir, "uploads", "stay.jpg")), true)
   } finally {
     console.error = originalError
     await failing.close()

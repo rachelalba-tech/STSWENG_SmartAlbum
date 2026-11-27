@@ -66,7 +66,7 @@ export function scoreImagePixels(
   }
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
     const timeout = window.setTimeout(() => finish(new Error("Image loading timed out")), 15_000)
