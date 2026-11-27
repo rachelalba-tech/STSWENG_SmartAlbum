@@ -728,6 +728,22 @@ export function createAlbumServer({ albums, ownerId: demoOwnerId, saveAlbums, us
       return
     }
 
+    const photoDelete = url.pathname.match(/^\/api\/photos\/([^/]+)$/)
+    if (photoDelete && photoDelete[1] !== "duplicates" && req.method === "DELETE") {
+      const photoId = safeDecode(photoDelete[1])
+      if (photoId === null) {
+        req.resume()
+        send(res, 400, { error: "bad photo id" })
+        return
+      }
+      try {
+        handlePhotoDelete(req, res, ownerId, photoId, photoStorage)
+      } catch (err) {
+        fail(err)
+      }
+      return
+    }
+
     const collageRoute = url.pathname.match(/^\/api\/collages(?:\/([^/]+))?$/)
     if (collageRoute) {
       const collageId = collageRoute[1] === undefined ? undefined : safeDecode(collageRoute[1])
@@ -828,6 +844,32 @@ function removeLibraryUploads(storage: PhotoStorage, ownerId: string, files: Set
   const removed = storage.photos.filter((photo) => photo.ownerId === ownerId && files.has(photo.file))
   replacePhotos(storage, storage.photos.filter((photo) => photo.ownerId !== ownerId || !files.has(photo.file)))
   cleanupUnreferencedUploads(storage, removed)
+}
+
+function handlePhotoDelete(
+  req: IncomingMessage,
+  res: ServerResponse,
+  ownerId: string,
+  photoId: string,
+  storage: PhotoStorage | undefined,
+): void {
+  req.resume()
+  if (!storage) {
+    send(res, 501, { error: "uploads are not configured" })
+    return
+  }
+  const matches = storage.photos.filter((photo) => photo.ownerId === ownerId && photo.id === photoId)
+  if (matches.length === 0) {
+    send(res, 404, { error: "photo not found" })
+    return
+  }
+  if (matches.length > 1) {
+    send(res, 409, { error: "photo id is ambiguous; nothing was removed" })
+    return
+  }
+  removeLibraryUploads(storage, ownerId, new Set([matches[0].file]))
+  res.writeHead(204)
+  res.end()
 }
 
 function detachAlbumUploads(storage: PhotoStorage, ownerId: string, albumId: string, files: Set<string>): void {

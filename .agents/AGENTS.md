@@ -68,7 +68,9 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   serves that user's file. `DELETE /api/albums/:albumId/photos/:photoId` clears that album link
   and leaves the file in the library (US #7, Joed). `PUT /api/photos/:id/image` replaces an owned
   photo's stored image file across all shared memberships: it rejects stale edits, rolls back on save
-  error, and cleans up the replaced file if unreferenced (US #17). Albums have `id`, `title`, `ownerId` and optional `description`.
+  error, and cleans up the replaced file if unreferenced (US #17). `DELETE /api/photos/:photoId` removes every owned
+  membership of that photo across the library and all albums, rolling back on save errors and cleaning up
+  unreferenced files safely (US #12). Albums have `id`, `title`, `ownerId` and optional `description`.
   `POST /api/albums`, `PATCH /api/albums/:id` and `DELETE /api/albums/:id` persist album changes.
   `PATCH /api/albums/:id/photos` adds immutable-file memberships; `PATCH /api/albums/:id/photos/order`
   validates and saves an exact permutation. The library lists each physical file once; album lists sort
@@ -89,6 +91,22 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   album; library actions remove every owned membership of the selected upload. Metadata saves roll
   back on failure; cleanup runs only after saving and preserves files referenced by any owner. Failed
   cleanup can leave inaccessible orphan files; it never rolls back a committed deletion or deletes shared data.
+- **Similar photos (US #12):** gallery and album pages include `SimilarPhotos.tsx`, which decodes photos
+  sequentially in the browser (`photoSimilarity.ts`) and compares perceptual 64-bit dHash, 4×4 spatial
+  RGB layout, and 64-bin RGB color histograms to group visually similar shots (deduplicating shared-file
+  memberships and sorting each set by visual quality without displaying numeric quality ratings). Users
+  can step through sets individually or view all sets, inspect full-size images, mark photos to keep, or
+  delete unwanted shots: album actions detach only from that album (`DELETE /api/albums/:albumId/photos/:photoId`,
+  preserving the library), while gallery actions remove the photo everywhere (`DELETE /api/photos/:photoId`).
+  Decode errors are retryable.
+- **Low-quality photos (US #13):** gallery and album pages include `LowQualityPhotos.tsx`, which decodes
+  photos sequentially in the browser (`photoQuality.ts`) and flags photos failing blur, exposure/backlighting,
+  or resolution thresholds with warning badges (`Blurry`, `Too dark`, `Overexposed / backlit`, `Poor exposure`,
+  `Low resolution`, `Low overall quality`). Users can review flagged photos in a grid or one at a time,
+  inspect full-size images, mark photos to keep, remove individual photos, or confirm bulk removal of all
+  unkept flagged photos: album actions detach only from that album (`DELETE /api/albums/:albumId/photos/:photoId`,
+  preserving the library), while gallery actions delete the photo everywhere (`DELETE /api/photos/:photoId`).
+  Decode errors are retryable and cached results invalidate when `photo.src` changes.
 - **Recommendations (US #14):** the gallery can analyze original image pixels in the browser, one image
   at a time, using resolution, exposure/clipping and sharp-detail heuristics. Decode/read errors are
   retryable; no semantic ranking or guarantee of photographic quality is claimed. Users select an
@@ -104,8 +122,8 @@ Planned parts (from `PROPOSAL.md`): web front end, back-end server, photo analys
   allowed browsers are the production and staging frontends and loopback HTTP. HTTPS cookies use SameSite=None
   and Secure, requiring third-party cookies on cross-site deployments; prefer a same-origin proxy.
   The checked-in `test` / `tester123` administrator is a demo, not production provisioning.
-  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping, color grading,
-  visual-similarity detection and dedicated low-quality flagging are not implemented.
+  Account registration/admin-user management and sharing are not implemented (US #24/#25). Photo cropping and color grading
+  are not implemented.
   Template collages and saved-collage editing are implemented (PR #22; US #21, with template geometry
   defects corrected on this branch). Collaboration and album cover selection remain page-local prototypes.
 - **Tests:** frontend tests live in `frontend/test/`, outside `src/`. `frontend/vite.config.ts`

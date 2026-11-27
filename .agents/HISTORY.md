@@ -3,6 +3,8 @@
 This file logs meaningful changes, with the newest entry first. Each entry follows this format:
 `YYYY-MM-DD · branch · type(scope): summary (US #n)`.
 
+- 2026-11-27 · feat/similar-pictures · feat(photos): flag low-quality photos in gallery and albums with warning badges, grid/one-by-one review, keep choices, and individual or confirmed bulk album/library deletion; remove quality rating display from similar photos (US #13).
+- 2026-11-27 · feat/similar-pictures · feat(photos): identify visually similar photo sets in gallery and albums with per-set review and scoped album/library deletion (`DELETE /api/photos/:photoId`) (US #12).
 - 2026-11-27 · feature/workflow · chore(ci): deploy the tested main commit to Render staging, gate production on environment approval, and allow the staging frontend origin (PR #39).
 - 2026-11-27 · feat/ui · feat(ui): refresh branding, consolidate styles and group album actions without dropping upload, rotation, or collage behavior (PR #35).
 - 2026-11-27 · feat/rotate-photo · feat(photos): persist 90° single-view rotation with stale-edit and animation guards (PR #34; US #17).

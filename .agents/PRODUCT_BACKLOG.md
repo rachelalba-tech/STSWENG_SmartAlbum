@@ -232,7 +232,7 @@ AC3: If the duplicates are deleted from the album then they can no longer be fou
 
 As a user, I want the system to identify visually similar photos so that I can choose the best image from multiple shots of the same subject or moment
 
-- **Status:** Not implemented.
+- **Status:** Implemented (uncommitted; awaiting review/merge) — browser-side perceptual dHash, spatial RGB and color-histogram grouping in gallery and albums, with set-by-set review, quality-ordered suggestions, retryable decode errors, album detach (`DELETE /api/albums/:albumId/photos/:photoId`) and library-wide deletion (`DELETE /api/photos/:photoId`).
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** Alwayne and Natt
@@ -260,7 +260,7 @@ AC4: If a photo was deleted in the gallery it can no longer be found anywhere
 
 As a user, I want the system to flag low-quality photos so that I will know not to include these photos in the curated albums
 
-- **Status:** Partial (this branch) — recommendation scoring measures resolution, exposure and detail, but there is no dedicated low-quality flag/review/deletion workflow.
+- **Status:** Implemented (uncommitted; awaiting review/merge) — gallery and album pages scan photos sequentially for blur, exposure/backlighting, and resolution issues, display quality warning flags with grid or one-at-a-time review, keep choices, retryable decode errors, and individual or confirmed bulk deletion (album detach via `DELETE /api/albums/:albumId/photos/:photoId`, gallery removal everywhere via `DELETE /api/photos/:photoId`).
 - **Estimate or Story Points:** 5
 - **Priority:** Middle
 - **Taken by:** John and Alwayne

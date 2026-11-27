@@ -6,6 +6,29 @@ export type PhotoQuality = {
   resolution: number
   exposure: number
   sharpness: number
+  brightness?: number
+  clippedRatio?: number
+}
+
+export function getLowQualityReasons(quality: PhotoQuality): string[] {
+  if (quality.recommended) return []
+  const reasons: string[] = []
+  if (quality.sharpness < 0.5) reasons.push("Blurry")
+  if (quality.exposure < 0.55) {
+    if (quality.brightness !== undefined && quality.brightness < 0.25) {
+      reasons.push("Too dark")
+    } else if (
+      (quality.brightness !== undefined && quality.brightness > 0.75) ||
+      (quality.clippedRatio !== undefined && quality.clippedRatio > 0.12)
+    ) {
+      reasons.push("Overexposed / backlit")
+    } else {
+      reasons.push("Poor exposure")
+    }
+  }
+  if (quality.resolution < 0.45) reasons.push("Low resolution")
+  if (reasons.length === 0) reasons.push("Low overall quality")
+  return reasons
 }
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -48,10 +71,11 @@ export function scoreImagePixels(
   for (let i = detail.length - strongest; i < detail.length; i += 1) edgeEnergy += detail[i]
   edgeEnergy /= strongest
 
+  const clippedRatio = clipped / luminance.length
   // Resolution is capped sqrt(pixel area / Full HD); exposure combines mean luma with the clipped-pixel share.
   const resolution = clamp(Math.sqrt((originalWidth * originalHeight) / (1920 * 1080)))
   const exposure = 0.75 * clamp(1 - Math.abs(brightness - 0.5) / 0.44) +
-    0.25 * clamp(1 - clipped / luminance.length / 0.08)
+    0.25 * clamp(1 - clippedRatio / 0.08)
   // Use the strongest local detail responses so broad, naturally flat backgrounds do not lower sharpness.
   const sharpness = clamp((edgeEnergy - 0.015) / 0.12)
   // Weights are 30% resolution, 40% exposure, 30% detail; per-signal cutoffs avoid high resolution masking flaws.
@@ -63,10 +87,12 @@ export function scoreImagePixels(
     resolution,
     exposure,
     sharpness,
+    brightness,
+    clippedRatio,
   }
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
     const timeout = window.setTimeout(() => finish(new Error("Image loading timed out")), 15_000)
