@@ -1,12 +1,16 @@
-# US#4 — Reorder Album Photos (code-only package)
+# US4 — Drag-and-drop album photo ordering
 
-This archive contains only the Reorder Photos feature snippets. It does NOT contain the main branch or a complete project.
+This folder contains only US4 feature snippets and its focused order-validation test. It does not include the application.
 
-## Apply these snippets
-- `frontend/AlbumPage.reorder.snippet.tsx`: add the ordering state/handlers and reorder UI inside the album page component. The component needs `photos` and `onReorder` props.
-- `frontend/api.reorderPhotos.snippet.ts`: add the API helper to `frontend/src/app/api.ts`.
-- `frontend/App.reorder-integration.snippet.tsx`: add `handleReorder` and pass `onReorder` to `AlbumPage`; import `reorderAlbumPhotos`.
-- `backend/http.reorderPhotos-route.snippet.ts`: add the PUT handler inside `createAlbumServer`.
-- `backend/photo-order-support.snippet.ts`: add `position` to the photo type, sort album photos by position, and allow it in stored-photo validation.
+## Feature scope
+- Drag photos into a preferred order in an album.
+- Save the order through the album photo-order API.
+- Reject incomplete, duplicate, or foreign photo IDs on the server.
 
-The `AlbumPage` stylesheet is an existing presentation dependency; use the CSS already supplied in the integrated version or style these controls in your project's existing stylesheet. These are snippets, not a standalone project.
+## Integration
+Apply the frontend snippets to the existing AlbumPage, API module, and App integration points as described in `CONTENTS.txt`. Apply the backend route and position-support snippets inside the existing server. Preserve unrelated routes and handlers. The backend must persist the `position` field and return photos sorted by it.
+
+## Test
+`node --test tests/reorder.test.mjs`
+
+This package is a feature patch/snippet set, not a standalone application.
